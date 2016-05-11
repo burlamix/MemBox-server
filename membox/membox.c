@@ -82,29 +82,9 @@ void * dispatcher()
 
 	while(TRUE){
 
-		pthread_mutex_lock(&lk_con_attive);
-		if(maxconnection - con_attive){
-		pthread_mutex_unlock(&lk_con_attive);
-
-					fd_c = accept(fd_skt,NULL,0);
-
-		pthread_mutex_lock(&lk_tatt);
-			//sospeso la messa in coda del file descriptor. 
-		pthread_cond_signal(&lk_tatt);
+	
 
 
-		}
-
-		fd_c = accept(fd_skt,NULL,0);
-
-		pthread_mutex_lock(&mtx);
-
-			fd_cm=fd_c;
-		
-		pthread_cond_signal(&con);	
-		pthread_mutex_unlock(&mtx);
-		i++;
-	}
 
 
 	close(fd_skt);
