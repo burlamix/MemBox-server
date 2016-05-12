@@ -20,7 +20,7 @@
 /* inserire gli altri include che servono */
 
 #include <stats.h>
-
+#include <liste.h>
 
 #define N 100
 #define TRUE 1
@@ -33,13 +33,6 @@
 struct statistics  mboxStats = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 //_______________________________________________________________________________________________________strutture_________________________________
 
-typedef struct nodo 
-{
-	int info;
-	struct nodo * next;
-}nodo;
-
-typedef nodo * lista_fd;
 
 
 
@@ -53,8 +46,8 @@ pthread_cond_t cond_tatt = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t lk_lostsignal = PTHREAD_MUTEX_INITIALIZER;
 int lost_signal=0;
 
-pthread_mutex_t lk_con_attive = PTHREAD_MUTEX_INITIALIZER;
-con_attive = 0;
+pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
+
 
 lista_fd l_fd=NULL;
 
@@ -71,6 +64,8 @@ void * dispatcher()
 
 	int fd_skt, fd_c;
 	struct sockaddr_un sa;
+	coda_fd* coda_conn;
+	coda_conn= initcoda(coda_conn);
 
 	(void) unlink(SOCKNAME);
 	strncpy(sa.sun_path, SOCKNAME,UNIX_PATH_MAX);				/* sistemo l'indirizzo */
@@ -81,13 +76,17 @@ void * dispatcher()
 	listen(fd_skt,SOMAXCONN);
 
 	while(TRUE){
+		pthread_mutex_lock(&lk_conn);
+		if(maxconnection-(coda_conn->lenght)>0){
+			fd_c=accept(fd_stk,NULL,0);
+			add_fd(coda_conn,fd_c);
+		}
+		pthread_mutex_unlock(&lk_conn);
 
-	
 
 
 
-
-	close(fd_skt);
+		close(fd_skt);
 	unlink(SOCKNAME);
 
 
