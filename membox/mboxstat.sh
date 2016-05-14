@@ -4,12 +4,7 @@ if [ ! -e $1 ]  ; then
 	printf impossibile stampare $1 dato che non esiste
 fi
 
-
-#  # tail -n -1 $1 | read s			 
-#  # perchè così non funziona? non dovrebe reindirizzare l'outpput del tail sull'input del read?
-																	
-tail -n -1 $1>3
-read s<3
+s=$(tail -n -1 $1)
 
 s=${s#*-}
 
