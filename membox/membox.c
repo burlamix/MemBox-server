@@ -20,10 +20,15 @@
 /* inserire gli altri include che servono */
 
 #include <stats.h>
-#include <liste.h>
+#include <sys/socket.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
-#define N 100
+#include "liste.c"    //momentaneo
+// #include <liste.h>
+
 #define TRUE 1
+#define FALSE 0
 #define UNIX_PATH_MAX 108
 #define SOCKNAME "sock_server"
 /* struttura che memorizza le statistiche del server, struct statistics 
@@ -49,7 +54,7 @@ int lost_signal=0;
 pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
 
 
-lista_fd l_fd=NULL;
+// lista_fd l_fd=NULL;
 
 //_____________________________________________________________________________cose da finire___________________________________________________________
 
@@ -64,10 +69,11 @@ void * dispatcher()
 
 	int fd_skt, fd_c;
 	struct sockaddr_un sa;
+
 	coda_fd* coda_conn;
 	coda_conn= initcoda(coda_conn);
 
-	(void) unlink(SOCKNAME);
+	(void) unlink(SOCKNAME);							//notare che le tre righe successive sono ricorrenti anche in connection.c si potrebbe fare una funzione he le chiama?
 	strncpy(sa.sun_path, SOCKNAME,UNIX_PATH_MAX);				/* sistemo l'indirizzo */
 	sa.sun_family = AF_UNIX;
 
@@ -76,21 +82,21 @@ void * dispatcher()
 	listen(fd_skt,SOMAXCONN);
 
 	while(TRUE){
+
 		pthread_mutex_lock(&lk_conn);
-		if(maxconnection-(coda_conn->lenght)>0){
-			fd_c=accept(fd_stk,NULL,0);
-			add_fd(coda_conn,fd_c);
-		}
+			if(maxconnection-(coda_conn->lenght)>0){
+				fd_c=accept(fd_skt,NULL,0);
+				add_fd(coda_conn,fd_c);
+			}
 		pthread_mutex_unlock(&lk_conn);
 
+	}
 
-
-
-		close(fd_skt);
+	close(fd_skt);
 	unlink(SOCKNAME);
 
-
 	pthread_exit((void *) 0);
+	
 }
 
 
