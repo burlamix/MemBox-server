@@ -37,9 +37,8 @@ int openConnection(char* path, unsigned int ntimes, unsigned int secs){
 	int i=0;
 	struct sockaddr_un sa;
 
-
-	(void) unlink(SOCKNAME);							 
-	strncpy(sa.sun_path, SOCKNAME,UNIX_PATH_MAX);				/* sistemo l'indirizzo */
+						 
+	strncpy(sa.sun_path, path ,UNIX_PATH_MAX);				/* sistemo l'indirizzo */
 	sa.sun_family = AF_UNIX;
 
 	fd_c=socket(AF_UNIX,SOCK_STREAM,0);						/* preparo la socket */						//gestione errori
