@@ -28,7 +28,7 @@ TARNAME=NomeCognome
 #             /tmp/mbox_stats_<numero-di-matricola>.
 #
 ###################################################################
-UNIX_PATH       = sock_server
+UNIX_PATH       = /tmp/mbox_socket
 STAT_PATH       = /tmp/mbox_stats.txt
 
 

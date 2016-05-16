@@ -30,7 +30,7 @@
 #define TRUE 1
 #define FALSE 0
 #define UNIX_PATH_MAX 108
-#define SOCKNAME "sock_server"
+#define SOCKNAME "/tmp/mbox_socket"
 /* struttura che memorizza le statistiche del server, struct statistics 
  * e' definita in stats.h.
  *
@@ -81,8 +81,15 @@ void * dispatcher()
 
 		pthread_mutex_lock(&lk_conn);
 			if(maxconnection-(coda_conn->lenght)>0){
-				fd_c=accept(fd_skt,NULL,0);
-				add_fd(coda_conn,fd_c);
+				
+				printf("	accept prima \n");	fflush(stdout);
+			fd_c=accept(fd_skt,NULL,0);
+				printf("	accept dopo \n");	fflush(stdout);
+
+				printf("	infilo prima \n");	fflush(stdout);
+			add_fd(coda_conn,fd_c);
+				printf("	infilo dopo \n");	fflush(stdout);
+
 				pthread_cond_signal(&cond_nuovolavoro);
 			}
 		pthread_mutex_unlock(&lk_conn);
@@ -97,6 +104,9 @@ void * dispatcher()
 }
 
 void* worker(){
+
+	printf("\n WORKER PARTITO \n");fflush(stdout);
+
 	nodo* job;
 	int fd;
 	message_t dati;
@@ -104,16 +114,19 @@ void* worker(){
 	while(1){
 	pthread_mutex_lock(&lk_conn);
 		while(coda_conn->testa_attesa==NULL){//fare con una funzione
+			printf("	testa attesa è nulla \n");	fflush(stdout);
+
 			pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
-			pthread_mutex_unlock(&lk_conn);
-			
 		}
+		printf("!!!!!!!!!!!!!!!!	worker \n");	fflush(stdout);
+
 		// fare con una funzione
 		job=coda_conn->testa_attesa;
 		fd=coda_conn->testa_attesa->info;
 		coda_conn->testa_attesa=coda_conn->testa_attesa->next;
 		pthread_mutex_unlock(&lk_conn);
 		
+
 		read(fd, &dati.hdr ,sizeof(message_hdr_t));
 		read(fd, &dati.data.len ,sizeof(int));
 		dati.data.buf = malloc(sizeof(char)*dati.data.len);
@@ -142,6 +155,7 @@ int main(int argc, char *argv[]) {
 		pthread_create(&threadinpool[i],NULL,worker, NULL);
 	}
 	
+	pthread_join(disp,NULL);
 
 
     return 0;

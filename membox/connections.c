@@ -11,7 +11,6 @@
 #include <stats.h>
 #include <sys/un.h>
 #include <string.h>
-#define SOCKNAME "sock_server"										//anche qui bisogna definire un modo che le definizioni si facciano da una parte e basta
 
 #include <stdlib.h>
 /**
@@ -47,7 +46,8 @@ int openConnection(char* path, unsigned int ntimes, unsigned int secs){
 		i++;
 		sleep(secs);							 
 	}
-	printf("connessione del client stabilita\n");	
+
+	if(i<ntimes)printf("connessione del client stabilita\n");	
 
 	if(i==ntimes) return -1;
 	else         return fd_c;
