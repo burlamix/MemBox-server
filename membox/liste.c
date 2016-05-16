@@ -13,10 +13,10 @@ typedef struct coda_fd{
 }coda_fd;
 
 
-coda_fd* initcoda( coda_fd* c){
-	if((c=malloc(sizeof(coda_fd))) == -1){
+coda_fd* initcoda(){
+	coda_fd* c;
+	if(( c=malloc(sizeof(coda_fd))) == NULL){
 		perror("create coda");
-		exit(EXIT_FAILURE);
 	}else{
 		c->lenght=0;
 		c->testa=NULL;

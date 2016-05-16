@@ -23,7 +23,7 @@
 #include <sys/socket.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-
+#include <message.h>
 #include "liste.c"    //momentaneo
 // #include <liste.h>
 
@@ -44,21 +44,19 @@ struct statistics  mboxStats = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
 //_________________________________________________________________________________________________variabili_di _codizione_______________________________________
 
-pthread_mutex_t lk_tatt = PTHREAD_MUTEX_INITIALIZER;
-int tatt=0;
-pthread_cond_t cond_tatt = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
 
-pthread_mutex_t lk_lostsignal = PTHREAD_MUTEX_INITIALIZER;
-int lost_signal=0;
 
 pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
 
+coda_fd* coda_conn= initcoda();
 
 // lista_fd l_fd=NULL;
 
 //_____________________________________________________________________________cose da finire___________________________________________________________
 
 int maxconnection=20;
+int ThreadsInPool=5;
 
 //________________________________________________________________________________________________________________________________________
 
@@ -70,8 +68,7 @@ void * dispatcher()
 	int fd_skt, fd_c;
 	struct sockaddr_un sa;
 
-	coda_fd* coda_conn;
-	coda_conn= initcoda(coda_conn);
+
 
 	(void) unlink(SOCKNAME);							//notare che le tre righe successive sono ricorrenti anche in connection.c si potrebbe fare una funzione he le chiama?
 	strncpy(sa.sun_path, SOCKNAME,UNIX_PATH_MAX);				/* sistemo l'indirizzo */
@@ -87,6 +84,7 @@ void * dispatcher()
 			if(maxconnection-(coda_conn->lenght)>0){
 				fd_c=accept(fd_skt,NULL,0);
 				add_fd(coda_conn,fd_c);
+				pthread_cond_signal(&cond_nuovolavoro);
 			}
 		pthread_mutex_unlock(&lk_conn);
 
@@ -99,8 +97,52 @@ void * dispatcher()
 	
 }
 
+void* worker(){
+	nodo* job;
+	int fd;
+	message_t dati;
+
+	while(1){
+	pthread_mutex_lock(&lk_conn);
+		while(coda_conn->testa_attesa==NULL){//fare con una funzione
+			pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
+			pthread_mutex_unlock(&lk_conn);
+			
+		}
+		// fare con una funzione
+		job=coda_conn->testa_attesa;
+		fd=coda_conn->testa_attesa->info;
+		coda_conn->testa_attesa=coda_conn->testa_attesa->next;
+		pthread_mutex_unlock(&lk_conn);
+		
+		read(fd, &dati.hdr ,sizeof(message_hdr_t));
+		read(fd, &dati.data.len ,sizeof(int));
+		dati.data.buf = malloc(sizeof(char)*dati.data.len);
+		read(fd, dati.data.buf ,dati.data.len *sizeof(char));	
+		
+		
+
+	pthread_mutex_lock(&lk_conn);
+	delete_fd(coda_conn, job);
+	pthread_mutex_unlock(&lk_conn);
+
+		
+	}		
+		
+	
+}
+
 
 int main(int argc, char *argv[]) {
+	pthread_t threadinpool[ThreadsInPool];
+	pthread_t disp;
+	pthread_create(&disp, NULL, dispatcher,NULL);
+	for(int i=0;i<ThreadsInPool;i++){
+		pthread_create(&threadinpool[i],NULL,worker, NULL);
+	}
+	
+
 
     return 0;
 }
+
