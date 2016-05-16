@@ -1,3 +1,16 @@
+typedef struct nodo {
+    struct nodo *next;
+    struct nodo *prec;
+    int info;
+} nodo;
+
+
+typedef struct coda_fd{
+	int lenght;
+	nodo* testa;
+	nodo* testa_attesa;
+	nodo* coda;
+}coda_fd;
 
 
 
