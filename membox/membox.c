@@ -48,8 +48,7 @@ pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
 
 
 pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
-
-coda_fd* coda_conn= initcoda();
+coda_fd* coda_conn;
 
 // lista_fd l_fd=NULL;
 
@@ -134,8 +133,10 @@ void* worker(){
 
 
 int main(int argc, char *argv[]) {
+
 	pthread_t threadinpool[ThreadsInPool];
 	pthread_t disp;
+	coda_conn=initcoda();
 	pthread_create(&disp, NULL, dispatcher,NULL);
 	for(int i=0;i<ThreadsInPool;i++){
 		pthread_create(&threadinpool[i],NULL,worker, NULL);

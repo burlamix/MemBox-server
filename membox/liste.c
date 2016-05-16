@@ -72,7 +72,7 @@ nodo* delete (nodo* n){
 }
 
 //prende in ingresso la testa della lista e cancella tutta la lista
-nodo* delete_all(nodo* n){
+void delete_all(nodo* n){
 
 	if(n==NULL){
 		return n;
