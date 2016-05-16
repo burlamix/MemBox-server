@@ -13,6 +13,7 @@
 #include <string.h>
 #define SOCKNAME "sock_server"										//anche qui bisogna definire un modo che le definizioni si facciano da una parte e basta
 
+#include <stdlib.h>
 /**
  * @file  connection.h
  * @brief Contiene le funzioni che implementano il protocollo 
@@ -64,7 +65,10 @@ int openConnection(char* path, unsigned int ntimes, unsigned int secs){
  *
  * @return 0 in caso di successo -1 in caso di errore
  */
-int readHeader(long fd, message_hdr_t *hdr){}
+int readHeader(long fd, message_hdr_t *hdr){
+	read(fd, hdr ,sizeof(message_hdr_t));
+	return 0;
+}
 
 /**
  * @function readData
@@ -75,7 +79,12 @@ int readHeader(long fd, message_hdr_t *hdr){}
  *
  * @return 0 in caso di successo -1 in caso di errore
  */
-int readData(long fd, message_data_t *data){}
+int readData(long fd, message_data_t *data){
+	read(fd, &(data->len) ,sizeof(int));
+	data->buf = malloc(sizeof(char)*(data->len));
+	read(fd, data->buf ,(data->len) *sizeof(char));
+	return 0;
+}
 
 
 /* da completare da parte dello studente con altri metodi di interfaccia */
@@ -92,7 +101,12 @@ int readData(long fd, message_data_t *data){}
  *
  * @return 0 in caso di successo -1 in caso di errore
  */
-int sendRequest(long fd, message_t *msg){}
+int sendRequest(long fd, message_t *msg){
+	write(fd, &msg->hdr ,sizeof(message_hdr_t));
+	write(fd, &((msg->data).len ),sizeof(int));
+	write(fd, (msg->data).buf , ((msg->data).len) * sizeof(char) );
+	return 0;
+}
 
 
 /**
@@ -104,5 +118,7 @@ int sendRequest(long fd, message_t *msg){}
  *
  * @return 0 in caso di successo -1 in caso di errore
  */
-int readReply(long fd, message_t *msg){}
+int readReply(long fd, message_t *msg){
+	return 0;
+}
 
