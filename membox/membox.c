@@ -46,7 +46,6 @@ struct statistics  mboxStats = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
 pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
 
-
 pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
 coda_fd* coda_conn;
 
@@ -60,7 +59,7 @@ int ThreadsInPool=5;
 //________________________________________________________________________________________________________________________________________
 
 
-void * dispatcher()
+void *dispatcher()
 {
 	printf("\n DISPATCHER PARTITO \n");fflush(stdout);
 
@@ -79,20 +78,28 @@ void * dispatcher()
 
 	while(TRUE){
 
-		pthread_mutex_lock(&lk_conn);
-			if(maxconnection-(coda_conn->lenght)>0){
-				
+			if( maxconnection-(coda_conn->lenght)>0){
+
 				printf("	accept prima \n");	fflush(stdout);
 			fd_c=accept(fd_skt,NULL,0);
+
 				printf("	accept dopo \n");	fflush(stdout);
 
 				printf("	infilo prima \n");	fflush(stdout);
+
+				pthread_mutex_lock(&lk_conn);
 			add_fd(coda_conn,fd_c);
 				printf("	infilo dopo \n");	fflush(stdout);
 
 				pthread_cond_signal(&cond_nuovolavoro);
+				pthread_mutex_unlock(&lk_conn);
 			}
-		pthread_mutex_unlock(&lk_conn);
+			else{
+				//fd_c=accept(fd_skt,NULL,0);
+				//message_t fail;
+				//va bene mandare un messaggio al client?
+
+			}
 
 	}
 
@@ -137,6 +144,7 @@ void* worker(){
 	pthread_mutex_lock(&lk_conn);
 	delete_fd(coda_conn, job);
 	pthread_mutex_unlock(&lk_conn);
+
 
 		
 	}		

@@ -74,9 +74,7 @@ nodo* delete (nodo* n){
 //prende in ingresso la testa della lista e cancella tutta la lista
 void delete_all(nodo* n){
 
-	if(n==NULL){
-		return n;
-	}else{
+	if(n!=NULL){
 		nodo* aus=n->next;
 		n->next=NULL;
 		free(n);
@@ -87,11 +85,24 @@ void delete_all(nodo* n){
 
 //cancella il file descpriptor dalla da chiamare con mutua esclusione
 void delete_fd(coda_fd* c,nodo * n){
+	if(n!=NULL && n->prec ==NULL){
+		c->testa=n->next;
+	}
 	delete(n);
 	c->lenght--;
 }
 
 void add_fd( coda_fd* c, int fd){
-	insert_incoda(c->coda,fd);
+
+	c->coda = insert_incoda(c->coda,fd);
 	c->lenght++;
+	if(c->testa==NULL){
+		c->testa=c->coda;
+
+	}
+	if(c->testa_attesa==NULL){
+			c->testa_attesa= c->coda;
+		printf("ciao!\n");
+	}
+	
 }
