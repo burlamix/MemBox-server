@@ -140,11 +140,11 @@ void* worker(){
 		dati.data.buf = malloc(sizeof(char)*dati.data.len);
 		read(fd, dati.data.buf ,dati.data.len *sizeof(char));	
 		
-		
+		//da decidere come fare
 
-	pthread_mutex_lock(&lk_conn);
-	delete_fd(coda_conn, job);
-	pthread_mutex_unlock(&lk_conn);
+		pthread_mutex_lock(&lk_conn);
+		delete_fd(coda_conn, job);
+		pthread_mutex_unlock(&lk_conn);
 
 
 		
