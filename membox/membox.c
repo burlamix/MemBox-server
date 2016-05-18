@@ -21,15 +21,17 @@
 
 #include <stats.h>
 #include <sys/socket.h>
-#include <sys/socket.h>
 #include <sys/un.h>
 #include <message.h>
 #include "liste.c"    //momentaneo
+#include <icl_hash.h>
+#include <connections.h>
+
 // #include <liste.h>
 
 #define TRUE 1
 #define FALSE 0
-#define UNIX_PATH_MAX 108
+#define NB 100
 #define SOCKNAME "/tmp/mbox_socket"
 /* struttura che memorizza le statistiche del server, struct statistics 
  * e' definita in stats.h.
@@ -45,9 +47,18 @@ struct statistics  mboxStats = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 //_________________________________________________________________________________________________variabili_di _codizione_______________________________________
 
 pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
-
 pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
 coda_fd* coda_conn;
+
+pthread_cond_t cond_repo = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t lk_repo = PTHREAD_MUTEX_INITIALIZER;
+int repo_l=0;
+
+pthread_mutex_t lk_job_c = PTHREAD_MUTEX_INITIALIZER;
+int job_c=0;
+
+icl_hash_t * repository; 
+
 
 // lista_fd l_fd=NULL;
 
@@ -78,7 +89,7 @@ void *dispatcher()
 
 	while(TRUE){
 
-			if( maxconnection-(coda_conn->lenght)>0){
+			if( maxconnection-(coda_conn->lenght)>0){ // se posso ancora accettare connessioni posso non accederci in lock perchè i woker possono solo decrementare il valore
 
 				printf("	accept prima \n");	fflush(stdout);
 			fd_c=accept(fd_skt,NULL,0);
@@ -134,14 +145,33 @@ void* worker(){
 		coda_conn->testa_attesa=coda_conn->testa_attesa->next;
 		pthread_mutex_unlock(&lk_conn);
 		
-
-		read(fd, &dati.hdr ,sizeof(message_hdr_t));
-		read(fd, &dati.data.len ,sizeof(int));
-		dati.data.buf = malloc(sizeof(char)*dati.data.len);
-		read(fd, dati.data.buf ,dati.data.len *sizeof(char));	
 		
-		//da decidere come fare
 
+		while(1)// e poi ci infiliamo una read
+		{	printf("!!!!!!!!!!!!!!!!	worker \n");	fflush(stdout);
+			read(fd, &dati.hdr ,sizeof(message_hdr_t));					//da implementare connnnn una fun, che fa tutto e gestisce quando la read sengla che il fd è stato chiuso
+			read(fd, &dati.data.len ,sizeof(int));
+			dati.data.buf = malloc(sizeof(char)*dati.data.len);
+			read(fd, dati.data.buf ,dati.data.len *sizeof(char));	
+		
+			pthread_mutex_lock(&lk_repo);
+				while(repo_l == 1){
+					pthread_cond_wait(&cond_repo,&lk_repo);
+				}
+			pthread_mutex_unlock(&lk_repo);
+
+			pthread_mutex_lock(&lk_job_c);
+				job_c++;
+			pthread_mutex_unlock(&lk_job_c);
+			printf("lavoro \n");	fflush(stdout);
+			//lavoro
+
+			pthread_mutex_lock(&lk_job_c);
+				job_c--;
+			pthread_mutex_unlock(&lk_job_c);
+
+				
+		}	
 		pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);
 		pthread_mutex_unlock(&lk_conn);
@@ -159,6 +189,10 @@ int main(int argc, char *argv[]) {
 	pthread_t threadinpool[ThreadsInPool];
 	pthread_t disp;
 	coda_conn=initcoda();
+
+	repository = icl_hash_create( NB, NULL,NULL);
+
+
 	pthread_create(&disp, NULL, dispatcher,NULL);
 	for(int i=0;i<ThreadsInPool;i++){
 		pthread_create(&threadinpool[i],NULL,worker, NULL);
