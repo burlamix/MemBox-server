@@ -94,11 +94,12 @@ void *dispatcher()
 				pthread_cond_signal(&cond_nuovolavoro);
 				pthread_mutex_unlock(&lk_conn);
 			}
-			else{
-				//fd_c=accept(fd_skt,NULL,0);
-				//message_t fail;
-				//va bene mandare un messaggio al client?
-
+			else{								//ramo da controllarne il funzionamento correto
+				
+				fd_c=accept(fd_skt,NULL,0);
+				message_t fail;
+				fail.hdr.op = OP_FAIL; 			//da definire poi un apposito messaggio per il numero massimo di connessioni raggiunto
+				sendRequest(fd_c, &fail); 
 			}
 
 	}
