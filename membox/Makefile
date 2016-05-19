@@ -47,7 +47,8 @@ TARGETS		= membox        \
 		  test_hash
 
 # aggiungere qui i file oggetto da compilare
-OBJECTS		= 
+OBJECTS		= connections.o 	\
+				icl_hash.o 
 
 
 # aggiungere qui gli altri include 
@@ -71,7 +72,7 @@ INCLUDE_FILES   = connections.h \
 all		: $(TARGETS)
 
 
-membox: membox.o libmbox.a connections.o icl_hash.o $(INCLUDE_FILES)
+membox: membox.o libmbox.a $(INCLUDE_FILES)
 	$(CC) $(CFLAGS) $(INCLUDES) $(OPTFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 client: client.o connections.o message.h

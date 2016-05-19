@@ -3,22 +3,25 @@
 #include <assert.h>
 
 
-int gest_op(message_hdr_t hdr){
-	switch (hdr.op) {
-   	    case PUT_OP:
-   	    		statement1;
+int gest_op(message_t mex){
+
+
+	switch (mex.hdr.op) {
+
+   	  case PUT_OP:
+   	    		put_op(mex.data.buff, mex.data.len, mex.hdr.key);
    	    		break;
 
  	    case UPDATE_OP:
-   	    		statement2;
+               update_op(mex.data.buff, mex.data.len, mex.hdr.key);
    	    		break;
    	    		
  	    case GET_OP:
-   	    		statementn;
+               remove_op(mex.hdr.key);
    	    		break;
 
  	    case REMOVE_OP:
-   	    		statementn;
+               get_op(*mex.data.buff, mex.data.len, mex.hdr.key);
    	    		break;
 
  	    case LOCK_OP:
