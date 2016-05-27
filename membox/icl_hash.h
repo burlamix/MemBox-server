@@ -11,10 +11,16 @@
 #define icl_hash_h
 
 #include <stdio.h>
+#include <pthread.h>
 
 #if defined(c_plusplus) || defined(__cplusplus)
 extern "C" {
 #endif
+
+typedef struct {
+    pthread_cond_t cond_line;
+    pthread_mutex_t mutex_line;
+} icl_entry_lk;
 
 typedef struct icl_entry_s {
     void* key;
@@ -26,6 +32,7 @@ typedef struct icl_hash_s {
     int nbuckets;
     int nentries;
     icl_entry_t **buckets;
+    //icl_entry_lk *lkline;
     unsigned int (*hash_function)(void*);
     int (*hash_key_compare)(void*, void*);
 } icl_hash_t;

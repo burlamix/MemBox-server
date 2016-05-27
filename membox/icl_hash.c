@@ -15,6 +15,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
+
+
+
 
 #include "icl_hash.h"
 
@@ -81,10 +85,17 @@ icl_hash_create( int nbuckets, unsigned int (*hash_function)(void*), int (*hash_
     ht->nentries = 0;
     ht->buckets = (icl_entry_t**)malloc(nbuckets * sizeof(icl_entry_t*));
     if(!ht->buckets) return NULL;
+    //ht->lkline = (icl_entry_lk*)malloc(nbuckets * sizeof(icl_entry_lk));
+    //if(!ht->lkline) return NULL;
 
     ht->nbuckets = nbuckets;
-    for(i=0;i<ht->nbuckets;i++)
+    for(i=0;i<ht->nbuckets;i++){
         ht->buckets[i] = NULL;
+        //(ht->lkline[i]).cond_line= PTHREAD_COND_INITIALIZER;
+        //(ht->lkline[i]).mutex_line= PTHREAD_MUTEX_INITIALIZER;
+        
+
+    }
 
     ht->hash_function = hash_function ? hash_function : hash_pjw;
     ht->hash_key_compare = hash_key_compare ? hash_key_compare : string_compare;
@@ -126,26 +137,26 @@ icl_hash_find(icl_hash_t *ht, void* key)
  * @param key -- the key of the new item
  * @param data -- pointer to the new item's data
  *
- * @returns pointer to the new item.  Returns NULL on error.
+ * @returns 0 if is ok, -1 on a malloc error, -2 if the object altready exists., -3 invalid argument
  */
 
-icl_entry_t *
+int
 icl_hash_insert(icl_hash_t *ht, void* key, void *data)
 {
     icl_entry_t *curr;
     unsigned int hash_val;
 
-    if(!ht || !key) return NULL;
+    if(!ht || !key) return -3;
 
     hash_val = (* ht->hash_function)(key) % ht->nbuckets;
 
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
         if ( ht->hash_key_compare(curr->key, key))
-            return(NULL); /* key already exists */
+            return(-2); /* key already exists */
 
     /* if key was not found */
     curr = (icl_entry_t*)malloc(sizeof(icl_entry_t));
-    if(!curr) return NULL;
+    if(!curr) return -1;
 
     curr->key = key;
     curr->data = data;
@@ -154,7 +165,7 @@ icl_hash_insert(icl_hash_t *ht, void* key, void *data)
     ht->buckets[hash_val] = curr;
     ht->nentries++;
 
-    return curr;
+    return 0;
 }
 
 /**
@@ -238,7 +249,7 @@ int icl_hash_delete(icl_hash_t *ht, void* key, void (*free_key)(void*), void (*f
             }
             if (*free_key && curr->key) (*free_key)(curr->key);
             if (*free_data && curr->data) (*free_data)(curr->data);
-            ht->nentries++;
+            ht->nentries--;
             free(curr);
             return 0;
         }

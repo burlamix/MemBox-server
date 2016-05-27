@@ -31,7 +31,7 @@
 
 #define TRUE 1
 #define FALSE 0
-#define NB 100
+#define NB 1013
 #define SOCKNAME "/tmp/mbox_socket"
 /* struttura che memorizza le statistiche del server, struct statistics 
  * e' definita in stats.h.
@@ -166,6 +166,7 @@ void* worker(){
 
 			ris_op = gest_op(dati);
 
+			//liberare memoria del messaggio
 			pthread_mutex_lock(&lk_job_c);
 				job_c--;
 			pthread_mutex_unlock(&lk_job_c);

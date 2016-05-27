@@ -39,9 +39,16 @@ int gest_op(message_t mex){
 
 
 int put_op(char * buff, unsigned int len, memboc_key_t key){
-	return 0;
+  int op;
+  message_data_t dato= malloc(sizeof(message_data_t));
+  dato.len=len;
+  dato.buff=buff;
+  op=icl_hash_insert( repository, (void *) key, (void *) dato);
+
+  return 0;
 }
 int update_op(char * buff, unsigned int len, memboc_key_t key){
+  
 	return 0;
 }
 int remove_op(memboc_key_t key){
