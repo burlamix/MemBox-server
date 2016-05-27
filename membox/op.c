@@ -5,37 +5,36 @@
 
 int gest_op(message_t mex){
 
+   int ris_op;
 
 	switch (mex.hdr.op) {
 
    	  case PUT_OP:
-   	    		put_op(mex.data.buff, mex.data.len, mex.hdr.key);
+   	    		ris_op = put_op(mex.data.buff, mex.data.len, mex.hdr.key);
    	    		break;
 
  	    case UPDATE_OP:
-               update_op(mex.data.buff, mex.data.len, mex.hdr.key);
-   	    		break;
-   	    		
- 	    case GET_OP:
-               remove_op(mex.hdr.key);
+               ris_op =  update_op(mex.data.buff, mex.data.len, mex.hdr.key);
    	    		break;
 
- 	    case REMOVE_OP:
-               get_op(*mex.data.buff, mex.data.len, mex.hdr.key);
+       case REMOVE_OP:
+               ris_op = get_op(mex.hdr.key);
+               break;
+   	    		
+ 	    case GET_OP:
+               ris_op = remove_op(newbuff, mex.data.len, mex.hdr.key);
    	    		break;
 
  	    case LOCK_OP:
-   	    		statementn;
+   	    		ris_op = lock_op();
    	    		break;
 
  	    case UNLOCK_OP:
-   	    		statementn;
+   	    		ris_op = unlock_op();
    	    		break;
-
-	    case default:
-	     		statement;
-	     		break;
 	    }
+
+  return ris_op;     
 }
 
 
@@ -51,12 +50,9 @@ int remove_op(memboc_key_t key){
 int get_op(char ** newbuff, unsigned int len, memboc_key_t key){
 	return 0;
 }
-int lock_op(char * buff, memboc_key_t key){
+int lock_op(){
 	return 0;
 }
-int unlock_op(char * buff, memboc_key_t key){
-	return 0;
-}
-int put_op(char * buff, memboc_key_t key){
+int unlock_op(){
 	return 0;
 }

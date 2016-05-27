@@ -128,6 +128,7 @@ void* worker(){
 
 	nodo* job;
 	int fd;
+	int ris_op;
 	message_t dati;
 
 	while(1){
@@ -161,10 +162,18 @@ void* worker(){
 			pthread_mutex_unlock(&lk_repo);
 
 			pthread_mutex_lock(&lk_job_c);
-				job_c++;
+				job_c++;							// !!!*!*!!! questo non va messo subito dopo il while sopra?
 			pthread_mutex_unlock(&lk_job_c);
+
 			printf("lavoro \n");	fflush(stdout);
 			//lavoro
+			//un idea può essere di mettere direttamente qua lo switch 
+			// farli chiamare le funzioni, che al loro interno fanno tutto
+			// ovvero rispondono anche al client con una write 
+			ris_op = gest_op(dati);
+			// o senno si può mettere qua la chiamata dello switch dove inseriamo l'intero messaggio
+			// e lui chiama le altre funzioni che a sua volta svogono l'intera operazione 
+			//bisognerà "codificare" bene il messaggio di ritorno del gest_op in modo che si capisca quando è errore, da quale chiamata, e perchè
 
 			pthread_mutex_lock(&lk_job_c);
 				job_c--;
@@ -179,7 +188,7 @@ void* worker(){
 
 		
 	}		
-		
+
 	
 }
 
