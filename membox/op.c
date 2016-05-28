@@ -44,14 +44,28 @@ int put_op(char * buff, unsigned int len, memboc_key_t key){
   dato.len=len;
   dato.buff=buff;
   op=icl_hash_insert( repository, (void *) key, (void *) dato);
-
+  //gestione degli errori
   return 0;
 }
 int update_op(char * buff, unsigned int len, memboc_key_t key){
-  
+  message_data_t* dato= (message_data_t*) icl_hash_find( repository, key);
+  if(dato!=NULL && dato->len== len){
+    //contollo la lunghezza prima di fare un assegnamento 
+    dato->buf=buff;
+  }else{
+    //decidere cosa fare nel caso in cui non ci sia l'oggetto;
+  }
 	return 0;
 }
+
+void freedata(message_data_t aus) {
+  free(aus.buf);
+  free(aus);
+}
+
 int remove_op(memboc_key_t key){
+  int op= icl_hash_delete( repository, key, &free , &freedata );
+  //gestione errore se op=-1;
 	return 0;
 }
 int get_op(char ** newbuff, unsigned int len, memboc_key_t key){
