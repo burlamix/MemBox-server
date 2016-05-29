@@ -26,6 +26,8 @@
 #include "liste.c"    //momentaneo
 #include <icl_hash.h>
 #include <connections.h>
+#include <op.h>
+
 
 // #include <liste.h>
 
@@ -164,7 +166,7 @@ void* worker(){
 
 			printf("lavoro \n");	fflush(stdout);
 
-			ris_op = gest_op(dati);
+			ris_op = gest_op(dati,fd);
 
 			//liberare memoria del messaggio
 			pthread_mutex_lock(&lk_job_c);

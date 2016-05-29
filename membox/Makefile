@@ -42,10 +42,11 @@ OPTFLAGS	= #-O3
 LIBS            = -pthread
 
 # aggiungere qui altri targets se necessario
-TARGETS		= membox        \
+TARGETS		= membox    \
 		  client        \
-		  test_hash
-
+		  test_hash		\
+		  op
+		  
 # aggiungere qui i file oggetto da compilare
 OBJECTS		= connections.o 	\
 				icl_hash.o 
