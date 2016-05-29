@@ -2,6 +2,10 @@
 #include <message.h>
 #include <assert.h>
 
+int StorageSize= 3000;
+int StorageByteSize= 7000;
+int MaxObjSize= 100;
+
 
 int gest_op(message_t mex,long fd){
 
@@ -47,34 +51,92 @@ int sendReply(long fd, message_hdr_t *hdr){
   return 0;
 }
 
-int put_op(char * buff, unsigned int len, memboc_key_t key,fd){
+int SizeOfRep( icl_hash_t* repo){
+  int size;
+  size= sizeof(icl_hash_t)+ (repo->nbuckets * sizeof( icl_entry_t*)) ;
+  size=+ (repo->nentries * sizeof(unsigned long)); //dimensione key
+  size=+ (repo->nentries * sizeof(message_data_t)); //dimensione dato
+  size=+ (repo->nentries* sizeof(icl_entry_t*)); //dimesione puntatore
+
+}
+
+int put_op(char * buff, unsigned int len, membox_key_t key,fd){
+  message_hdr_t risp;
+  int newdim= SizeOfRep(repository) + (sizeof(unsigned long)) + (sizeof(message_data_t)) + (sizeof(icl_entry_t*));
+  //si verifica che la repository non abbia raggiunto il massimo numero di elementi
+  if ( repository->nentries >= StorageSize){
+    risp.op= OP_PUT_TOOMANY;
+    sendReply( fd, *risp);
+    return 0;
+  }
+  //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
+  if(newdim>= StorageByteSize){
+    risp.op= OP_PUT_REPOSIZE;
+    sendReply( fd, *risp);
+    return 0;
+  } 
+
   int op;
-  message_data_t dato= malloc(sizeof(message_data_t));
-  dato.len=len;
-  dato.buff=buff;
+  message_data_t* dato= malloc(sizeof(message_data_t));
+  dato->len=len;
+  dato->buff=buff;
+  if (sizeof(dato)> MaxObjSize){
+    free(dato->buff);
+    free(dato);
+    risp.op= OP_PUT_SIZE;
+    sendReply( fd, *risp);
+    return 0;
+  }
   op=icl_hash_insert( repository, (void *) key, (void *) dato);
-  //gestione degli errori
+  switch (op){
+    case 0 :
+      risp.op= OP_OK;
+    case -1 :
+    case -3 :
+      risp.op= OP_FAIL;
+      free(dato->buff);
+      free(dato);
+    case -2 :
+      risp.op= OP_PUT_ALREADY;
+      free(dato->buff);
+      free(dato);
+  }
+  sendReply( fd, *risp);
   return 0;
 }
-int update_op(char * buff, unsigned int len, memboc_key_t key,fd){
+
+int update_op(char * buff, unsigned int len, membox_key_t key,fd){
   message_data_t* dato= (message_data_t*) icl_hash_find( repository, key);
-  if(dato!=NULL && dato->len== len){
-    //contollo la lunghezza prima di fare un assegnamento 
-    dato->buf=buff;
-  }else{
-    //decidere cosa fare nel caso in cui non ci sia l'oggetto;
+  message_hdr_t risp;
+  
+  if(dato==NULL){
+    risp.op= OP_UPDATE_NONE;
   }
+  if (dato->len != len){
+    risp.op= OP_UPDATE_SIZE; 
+  }else{
+    dato->buf=buff;
+    risp.op= OP_OK;
+  }
+  sendReply( fd, *risp);
 	return 0;
 }
 
 int remove_op(membox_key_t key,fd){
   int op= icl_hash_delete( repository, key, &free , &freedata );
-  //gestione errore se op=-1;
+   message_hdr_t risp;
+  if (op){
+    risp.op= OP_OK;
+  }else{
+    risp.op=OP_REMOVE_NONE;
+  }
 	return 0;
 }
-int get_op(char ** newbuff, unsigned int len, memboc_key_t key,fd){
+int get_op(char ** newbuff, unsigned int len, membox_key_t key,fd){
+  
 	return 0;
 }
+
 int lock_op(fd){
     
   pthread_mutex_lock(&lk_conn);
