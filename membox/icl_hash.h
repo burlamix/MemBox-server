@@ -43,7 +43,7 @@ typedef struct icl_hash_s {
 
 
     icl_entry_t **buckets;
-    //icl_entry_lk *lkline;
+    icl_entry_lk *lkline;
     unsigned int (*hash_function)(void*);
     int (*hash_key_compare)(void*, void*);
 } icl_hash_t;
