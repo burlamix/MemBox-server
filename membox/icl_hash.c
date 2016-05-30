@@ -83,6 +83,15 @@ icl_hash_create( int nbuckets, unsigned int (*hash_function)(void*), int (*hash_
     if(!ht) return NULL;
 
     ht->nentries = 0;
+    pthread_mutex_init(&ht->lk_repo, NULL);
+    ht->repo_l=0;
+    ht->fd=-1;
+    //gestione errore
+    pthread_cond_init(&ht->cond_repo,NULL);
+    pthread_mutex_init(&ht->lk_job_c, NULL);
+    ht->job_c=0;
+    //gestione errore
+    pthread_cond_init(&ht->cond_job,NULL);
     ht->buckets = (icl_entry_t**)malloc(nbuckets * sizeof(icl_entry_t*));
     if(!ht->buckets) return NULL;
     //ht->lkline = (icl_entry_lk*)malloc(nbuckets * sizeof(icl_entry_lk));

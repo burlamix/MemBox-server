@@ -52,12 +52,12 @@ pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
 coda_fd* coda_conn;
 
-pthread_cond_t cond_repo = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t lk_repo = PTHREAD_MUTEX_INITIALIZER;
-int repo_l=0;
+//pthread_cond_t cond_repo = PTHREAD_COND_INITIALIZER;
+//pthread_mutex_t lk_repo = PTHREAD_MUTEX_INITIALIZER;
+//int repo_l=0;
 
-pthread_mutex_t lk_job_c = PTHREAD_MUTEX_INITIALIZER;
-int job_c=0;
+//pthread_mutex_t lk_job_c = PTHREAD_MUTEX_INITIALIZER;
+//int job_c=0;
 
 icl_hash_t * repository; 
 
@@ -70,6 +70,10 @@ int maxconnection=20;
 int ThreadsInPool=5;
 
 //________________________________________________________________________________________________________________________________________
+
+
+
+
 
 
 void *dispatcher()
@@ -157,21 +161,26 @@ void* worker(){
 			dati.data.buf = malloc(sizeof(char)*dati.data.len);
 			read(fd, dati.data.buf ,dati.data.len *sizeof(char));	
 		
-			pthread_mutex_lock(&lk_repo);
-				while(repo_l == 1){
-					pthread_cond_wait(&cond_repo,&lk_repo);
+			pthread_mutex_lock(&(repository->lk_repo));
+				while(repository->repo_l == 1){
+					pthread_cond_wait(&(repository->cond_repo),&(repository->lk_repo));
 				}
-				job_c++;							// !!!*!*!!! questo non va messo subito dopo il while sopra?
-			pthread_mutex_unlock(&lk_job_c);
+			pthread_mutex_lock(&(repository->lk_job_c));
+				repository->job_c++;							// !!!*!*!!! questo non va messo subito dopo il while sopra?
+			pthread_mutex_unlock(&repository->lk_job_c);
+			pthread_mutex_unlock(&(repository->lk_repo));
 
 			printf("lavoro \n");	fflush(stdout);
 
-			ris_op = gest_op(dati,fd);
+			ris_op = gest_op(dati,fd, repository);
 
 			//liberare memoria del messaggio
-			pthread_mutex_lock(&lk_job_c);
-				job_c--;
-			pthread_mutex_unlock(&lk_job_c);
+			pthread_mutex_lock(&(repository->lk_job_c));
+				repository->job_c--;
+				//nel caso in cui non ci siano più lavori in esecuzione allora viene attivata la lock
+				if(repository->job_c==0) 
+					pthread_cond_signal(&(repository->cond_job));
+			pthread_mutex_unlock(&(repository->lk_job_c));
 
 				
 		}	

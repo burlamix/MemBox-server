@@ -31,6 +31,17 @@ typedef struct icl_entry_s {
 typedef struct icl_hash_s {
     int nbuckets;
     int nentries;
+    //per accedere alla repository in mutua esclusione:
+    pthread_mutex_t lk_repo;
+    int repo_l;
+    int fd;// -1 come default
+    pthread_cond_t cond_repo;
+    //per conoscere quanti job stanno lavorando sulla repository:
+    pthread_mutex_t lk_job_c;
+    int job_c;
+    pthread_cond_t cond_job;
+
+
     icl_entry_t **buckets;
     //icl_entry_lk *lkline;
     unsigned int (*hash_function)(void*);
