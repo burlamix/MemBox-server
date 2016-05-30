@@ -41,7 +41,7 @@ LDFLAGS 	= -L.
 OPTFLAGS	= #-O3 
 LIBS            = -pthread
 
-# aggiungere qui altri targets se necessario
+# aggiungere qui altri targets se necessario ?
 TARGETS		= membox    \
 		  client        \
 		  test_hash		\
