@@ -57,7 +57,7 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
     sendReply( fd, &risp);
     return 0;
   }
-  op=icl_hash_insert( repository, key, (void *) dato);
+  op=icl_hash_insert( repository,(void*)(long) key, (void *) dato);
   switch (op){
     case 0 :
       risp.op= OP_OK;
@@ -76,7 +76,7 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
 }
 
 int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t key,int fd){
-  message_data_t* dato= (message_data_t*) icl_hash_find( repository, key);
+  message_data_t* dato= (message_data_t*) icl_hash_find( repository, (void*)(long)key);
   message_hdr_t risp;
   
   if(dato==NULL){
@@ -93,7 +93,7 @@ int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t
 }
 
 int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
-  int op= icl_hash_delete( repository, key, &free , &freedata );
+  int op= icl_hash_delete( repository, (void*)(long)key, &free , &freedata);
    message_hdr_t risp;
   if (op){
     risp.op= OP_OK;
@@ -104,7 +104,7 @@ int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
   return 0;
 }
 int get_op(icl_hash_t* repository, membox_key_t key,int fd){
-    message_data_t* dato= (message_data_t*) icl_hash_find( repository, key);
+    message_data_t* dato= (message_data_t*) icl_hash_find( repository, (void*)(long)key);
     message_hdr_t risp;
     if (dato==NULL){
       risp.op=OP_GET_NONE;
@@ -199,6 +199,9 @@ int gest_op(message_t mex,long fd, icl_hash_t* repository){
       case UNLOCK_OP:
             ris_op = unlock_op(fd,repository);
             break;
+      default:
+        fprintf(stderr, "Invalid request\n");
+        return -1;
       }
 
   return ris_op;     
