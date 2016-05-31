@@ -48,17 +48,19 @@ TARGETS		= membox	\
 		  
 # aggiungere qui i file oggetto da compilare
 OBJECTS		= connections.o		\
-		icl_hash.o	\
-		op.o
+			icl_hash.o			\
+			op.o 				\
+			parse.o
 
 
 # aggiungere qui gli altri include 
 INCLUDE_FILES   = connections.h \
-		  message.h     \
-		  ops.h	  	\
-		  stats.h 	\
-		  icl_hash.h   	\
-		op.h
+				message.h     	\
+				ops.h	  		\
+				stats.h 		\
+				icl_hash.h   	\
+				op.h 			\
+				parse.h
 		  
 
 

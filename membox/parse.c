@@ -1,6 +1,10 @@
+#define _GNU_SOURCE
+#include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <parse.h>
+
 
 char * remove_n (char* s){
 
@@ -9,46 +13,34 @@ char * remove_n (char* s){
 	return s;
 }
 
-typedef struct var_conf 
-{
-	char  UnixPath[100];
-	int MaxConnections;
-	int ThreadsInPool;
-	int StorageSize;
-	int StorageByteSize;
-	int MaxObjSize;
-	char StatFileName[100]; 			//perche se la dichiaro come char * quando poi vado a farci la strcpy mi da errore? creod sia dovuto a un carattere solo come l'ultimo 
-}var_conf;
 
-var_conf pippo;
+int assegna_var (char* s1, char* s2, var_conf* str_conf){
 
-int assegna_var (char* s1, char* s2){
+	if(strcmp(s1,"UnixPath" ) == 0)			{strcpy(str_conf->UnixPath, s2);return 0;}
+	if(strcmp(s1,"StatFileName") == 0)		{strcpy(str_conf->StatFileName, s2);return 0;}
 
-	if(strcmp(s1,"UnixPath" ) == 0)			{strcpy(pippo.UnixPath, s2);return 0;}
-	if(strcmp(s1,"StatFileName") == 0)		{strcpy(pippo.StatFileName, s2);return 0;}
-
-	if(strcmp(s1,"MaxConnections") == 0)	{pippo.MaxConnections = atoi(s2);return 0;}
-	if(strcmp(s1,"ThreadsInPool") == 0)		{pippo.ThreadsInPool = atoi(s2);return 0;}
-	if(strcmp(s1,"StorageSize") == 0)		{pippo.StorageSize = atoi(s2);return 0;}
-	if(strcmp(s1,"StorageByteSize") == 0)	{pippo.StorageByteSize = atoi(s2);return 0;}
-	if(strcmp(s1,"MaxObjSize") == 0)		{pippo.MaxObjSize = atoi(s2);return 0;}
+	if(strcmp(s1,"MaxConnections") == 0)	{str_conf->MaxConnections = atoi(s2);return 0;}
+	if(strcmp(s1,"ThreadsInPool") == 0)		{str_conf->ThreadsInPool = atoi(s2);return 0;}
+	if(strcmp(s1,"StorageSize") == 0)		{str_conf->StorageSize = atoi(s2);return 0;}
+	if(strcmp(s1,"StorageByteSize") == 0)	{str_conf->StorageByteSize = atoi(s2);return 0;}
+	if(strcmp(s1,"MaxObjSize") == 0)		{str_conf->MaxObjSize = atoi(s2);return 0;}
 
 	return -1;
 }
 
 
-int main()
+int parse(char* path,var_conf* str_agg)
 {
     size_t len = 0;
 	char *linea = NULL;
 	char *var1 = NULL;
 	char *var2 = NULL;
 
-	ssize_t read;
+	// ssize_t read;
 	int i,j;
 
 	FILE* fd = NULL;
-	fd = fopen("membox.conf1","r");		//gestione errori
+	fd = fopen(path,"r");		//gestione errori
 
 	i=0;
 	while(i<15){
@@ -67,7 +59,8 @@ int main()
   			// printf("1->%s<-\n", var1);
   			// printf("2->%s<-\n", var2);
 
-			if (assegna_var(var1,var2) == -1) {
+			if (assegna_var(var1,var2,str_agg) == -1) {
+				printf("\n!!	ATTENZIONE	!!il file di configuarazione non è formattato bene\n");
 				//file di configuarazione non valido come si gestisce?
 			}
  			
@@ -75,6 +68,8 @@ int main()
 
 		i++;
 	}
+	
+	close(fd);		//gestione errori
 
   return 0;
 }

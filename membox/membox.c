@@ -27,6 +27,8 @@
 #include <icl_hash.h>
 #include <connections.h>
 #include <op.h>
+#include <parse.h>
+
 
 
 // #include <liste.h>
@@ -66,8 +68,9 @@ icl_hash_t * repository;
 
 //_____________________________________________________________________________cose da finire___________________________________________________________
 
-int maxconnection=20;
-int ThreadsInPool=5;
+
+var_conf v_configurazione;
+
 
 //________________________________________________________________________________________________________________________________________
 
@@ -95,7 +98,7 @@ void *dispatcher()
 
 	while(TRUE){
 
-			if( maxconnection-(coda_conn->lenght)>0){ // se posso ancora accettare connessioni posso non accederci in lock perchè i woker possono solo decrementare il valore
+			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ // se posso ancora accettare connessioni posso non accederci in lock perchè i woker possono solo decrementare il valore
 
 				printf("	accept prima \n");	fflush(stdout);
 			fd_c=accept(fd_skt,NULL,0);
@@ -181,32 +184,29 @@ void* worker(){
 				if(repository->job_c==0) 
 					pthread_cond_signal(&(repository->cond_job));
 			pthread_mutex_unlock(&(repository->lk_job_c));
-
-				
+	
 		}	
 		pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);
 		pthread_mutex_unlock(&lk_conn);
 
-
-		
 	}		
-
-	
 }
 
 
 int main(int argc, char *argv[]) {
 
-	pthread_t threadinpool[ThreadsInPool];
+	pthread_t *threadinpool;
 	pthread_t disp;
 	coda_conn=initcoda();
 
+	parse(argv[2], &v_configurazione);
+	threadinpool = malloc(v_configurazione.ThreadsInPool*(sizeof(pthread_t)));
+
 	repository = icl_hash_create( NB, NULL,NULL);
 
-
 	pthread_create(&disp, NULL, dispatcher,NULL);
-	for(int i=0;i<ThreadsInPool;i++){
+	for(int i=0;i<v_configurazione.ThreadsInPool;i++){
 		pthread_create(&threadinpool[i],NULL,worker, NULL);
 	}
 	
