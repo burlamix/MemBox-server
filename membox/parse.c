@@ -1,10 +1,9 @@
-#define _GNU_SOURCE
+#define _GNU_SOURCE	// ca capire bene perchè senza questo la get line non va
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <parse.h>
-
 
 char * remove_n (char* s){
 
@@ -12,7 +11,6 @@ char * remove_n (char* s){
 	if ( p ) *p = 0;
 	return s;
 }
-
 
 int assegna_var (char* s1, char* s2, var_conf* str_conf){
 
@@ -28,7 +26,6 @@ int assegna_var (char* s1, char* s2, var_conf* str_conf){
 	return -1;
 }
 
-
 int parse(char* path,var_conf* str_agg)
 {
     size_t len = 0;
@@ -43,7 +40,7 @@ int parse(char* path,var_conf* str_agg)
 	fd = fopen(path,"r");		//gestione errori
 
 	i=0;
-	while(i<15){
+	while(i<38){
 
 		getline(&linea, &len, fd);		//gestione errori
 
@@ -63,13 +60,10 @@ int parse(char* path,var_conf* str_agg)
 				printf("\n!!	ATTENZIONE	!!il file di configuarazione non è formattato bene\n");
 				//file di configuarazione non valido come si gestisce?
 			}
- 			
 		}
-
 		i++;
 	}
-	
-	close(fd);		//gestione errori
+	fclose(fd);		//gestione errori
 
   return 0;
 }
