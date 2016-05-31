@@ -11,10 +11,6 @@ int StorageByteSize= 7000;
 int MaxObjSize= 100;
 
 
-void freedata(message_data_t* aus) {
-  free(aus->buf);
-  free(aus);
-}
 
 int sendReply(long fd, message_hdr_t *hdr){
   write(fd, &hdr ,sizeof(message_hdr_t));
@@ -57,7 +53,7 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
     sendReply( fd, &risp);
     return 0;
   }
-  op=icl_hash_insert( repository,(void*)(long) key, (void *) dato);
+  op=icl_hash_insert( repository, key, dato);
   switch (op){
     case 0 :
       risp.op= OP_OK;
@@ -76,7 +72,7 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
 }
 
 int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t key,int fd){
-  message_data_t* dato= (message_data_t*) icl_hash_find( repository, (void*)(long)key);
+  message_data_t* dato= (message_data_t*) icl_hash_find( repository, key);
   message_hdr_t risp;
   
   if(dato==NULL){
@@ -93,7 +89,7 @@ int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t
 }
 
 int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
-  int op= icl_hash_delete( repository, (void*)(long)key, &free , &freedata);
+  int op= icl_hash_delete( repository, key);
    message_hdr_t risp;
   if (op){
     risp.op= OP_OK;
@@ -104,7 +100,7 @@ int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
   return 0;
 }
 int get_op(icl_hash_t* repository, membox_key_t key,int fd){
-    message_data_t* dato= (message_data_t*) icl_hash_find( repository, (void*)(long)key);
+    message_data_t* dato= (message_data_t*) icl_hash_find( repository, key);
     message_hdr_t risp;
     if (dato==NULL){
       risp.op=OP_GET_NONE;

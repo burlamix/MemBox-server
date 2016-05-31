@@ -43,8 +43,7 @@ LIBS            = -pthread
 
 # aggiungere qui altri targets se necessario ?
 TARGETS		= membox	\
-		  client	\
-		  test_hash	
+		  client		
 		  
 # aggiungere qui i file oggetto da compilare
 OBJECTS		= connections.o		\

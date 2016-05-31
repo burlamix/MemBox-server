@@ -6,6 +6,11 @@
 #define ec_null(s,m) \
 	if((s)==NULL){ perror(m);}
 
+#define ec_meno1_np(s,c)\
+	if((s)==-1) { c;}
+#define ec_null_np(s,c)\
+	if((s)==NULL){c;}
+
 #define ec_meno1_ex(s,m) \
 	if((s)==-1) { perror (m); exit(EXIT_FAILURE); } //exit failure ha senso?
 #define ec_null_ex(s,m) \

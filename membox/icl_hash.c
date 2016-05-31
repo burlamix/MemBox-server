@@ -16,6 +16,7 @@
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
+#include <err_man.h>
 
 
 
@@ -62,6 +63,11 @@ static int string_compare(void* a, void* b)
     return (strcmp( (char*)a, (char*)b ) == 0);
 }
 
+void freedata(message_data_t* aus) {
+  free(aus->buf);
+  free(aus);
+}
+
 
 /**
  * Create a new hash table.
@@ -74,12 +80,11 @@ static int string_compare(void* a, void* b)
  */
 
 icl_hash_t *
-icl_hash_create( int nbuckets, unsigned int (*hash_function)(void*), int (*hash_key_compare)(void*, void*) )
-{
+icl_hash_create( int nbuckets){
     icl_hash_t *ht;
     int i;
 
-    ht = (icl_hash_t*) malloc(sizeof(icl_hash_t));
+    ht= (icl_hash_t*)malloc(sizeof(icl_hash_t));
     if(!ht) return NULL;
 
     ht->nentries = 0;
@@ -94,23 +99,20 @@ icl_hash_create( int nbuckets, unsigned int (*hash_function)(void*), int (*hash_
     pthread_cond_init(&ht->cond_job,NULL);
     ht->buckets = (icl_entry_t**)malloc(nbuckets * sizeof(icl_entry_t*));
     if(!ht->buckets) return NULL;
-    //ht->lkline = (icl_entry_lk*)malloc(nbuckets * sizeof(icl_entry_lk));
-    //if(!ht->lkline) return NULL;
+    ht->lkline = (icl_entry_lk*)malloc(nbuckets * sizeof(icl_entry_lk));
+    if(!ht->lkline) return NULL;
 
     ht->nbuckets = nbuckets;
     for(i=0;i<ht->nbuckets;i++){
         ht->buckets[i] = NULL;
-        //(ht->lkline[i]).cond_line= PTHREAD_COND_INITIALIZER;
-        //(ht->lkline[i]).mutex_line= PTHREAD_MUTEX_INITIALIZER;
-        
-
+        pthread_cond_init(&(ht->lkline[i].cond_line),NULL);
+        pthread_mutex_init(&(ht->lkline[i].mutex_line),NULL);
     }
-
-    ht->hash_function = hash_function ? hash_function : hash_pjw;
-    ht->hash_key_compare = hash_key_compare ? hash_key_compare : string_compare;
-
     return ht;
+        
 }
+
+
 
 /**
  * Search for an entry in a hash table.
@@ -122,21 +124,20 @@ icl_hash_create( int nbuckets, unsigned int (*hash_function)(void*), int (*hash_
  *   If the key was not found, returns NULL.
  */
 
-void *
-icl_hash_find(icl_hash_t *ht, void* key)
-{
+message_data_t *
+icl_hash_find(icl_hash_t *ht, unsigned int key){
     icl_entry_t* curr;
     unsigned int hash_val;
 
     if(!ht || !key) return NULL;
-
-    hash_val = (* ht->hash_function)(key) % ht->nbuckets;
+    hash_val= hash_pjw((void*)(long)key)% ht->nbuckets;
 
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
-        if ( ht->hash_key_compare(curr->key, key))
+        if ( curr->key==key)
             return(curr->data);
 
     return NULL;
+
 }
 
 /**
@@ -150,17 +151,16 @@ icl_hash_find(icl_hash_t *ht, void* key)
  */
 
 int
-icl_hash_insert(icl_hash_t *ht, void* key, void *data)
+icl_hash_insert(icl_hash_t *ht, unsigned int key, message_data_t* data)
 {
     icl_entry_t *curr;
     unsigned int hash_val;
 
     if(!ht || !key) return -3;
 
-    hash_val = (* ht->hash_function)(key) % ht->nbuckets;
-
+    hash_val=hash_pjw((void*)(long)key)% ht->nbuckets;
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
-        if ( ht->hash_key_compare(curr->key, key))
+        if ( curr->key==key)
             return(-2); /* key already exists */
 
     /* if key was not found */
@@ -175,60 +175,9 @@ icl_hash_insert(icl_hash_t *ht, void* key, void *data)
     ht->nentries++;
 
     return 0;
+
 }
 
-/**
- * Replace entry in hash table with the given entry.
- *
- * @param ht -- the hash table
- * @param key -- the key of the new item
- * @param data -- pointer to the new item's data
- * @param olddata -- pointer to the old item's data (set upon return)
- *
- * @returns pointer to the new item.  Returns NULL on error.
- */
-
-icl_entry_t *
-icl_hash_update_insert(icl_hash_t *ht, void* key, void *data, void **olddata)
-{
-    icl_entry_t *curr, *prev;
-    unsigned int hash_val;
-
-    if(!ht || !key) return NULL;
-
-    hash_val = (* ht->hash_function)(key) % ht->nbuckets;
-
-    /* Scan bucket[hash_val] for key */
-    for (prev=NULL,curr=ht->buckets[hash_val]; curr != NULL; prev=curr, curr=curr->next)
-        /* If key found, remove node from list, free old key, and setup olddata for the return */
-        if ( ht->hash_key_compare(curr->key, key)) {
-            if (olddata != NULL) {
-                *olddata = curr->data;
-                free(curr->key);
-            }
-
-            if (prev == NULL)
-                ht->buckets[hash_val] = curr->next;
-            else
-                prev->next = curr->next;
-        }
-
-    /* Since key was either not found, or found-and-removed, create and prepend new node */
-    curr = (icl_entry_t*)malloc(sizeof(icl_entry_t));
-    if(curr == NULL) return NULL; /* out of memory */
-
-    curr->key = key;
-    curr->data = data;
-    curr->next = ht->buckets[hash_val]; /* add at start */
-
-    ht->buckets[hash_val] = curr;
-    ht->nentries++;
-
-    if(olddata!=NULL && *olddata!=NULL)
-        *olddata = NULL;
-
-    return curr;
-}
 
 /**
  * Free one hash table entry located by key (key and data are freed using functions).
@@ -240,33 +189,36 @@ icl_hash_update_insert(icl_hash_t *ht, void* key, void *data, void **olddata)
  *
  * @returns 0 on success, -1 on failure.
  */
-int icl_hash_delete(icl_hash_t *ht, void* key, void (*free_key)(void*), void (*free_data)(void*))
-{
+
+int icl_hash_delete(icl_hash_t *ht, unsigned int key ){
     icl_entry_t *curr, *prev;
     unsigned int hash_val;
-
     if(!ht || !key) return -1;
-    hash_val = (* ht->hash_function)(key) % ht->nbuckets;
 
-    prev = NULL;
-    for (curr=ht->buckets[hash_val]; curr != NULL; )  {
-        if ( ht->hash_key_compare(curr->key, key)) {
-            if (prev == NULL) {
-                ht->buckets[hash_val] = curr->next;
-            } else {
-                prev->next = curr->next;
+    hash_val=hash_pjw((void*)(long)key)% ht->nbuckets;
+
+    prev= NULL;
+    for(curr=ht->buckets[hash_val]; curr !=NULL; curr=curr->next){
+        if(curr->key==key){
+            if(prev==NULL){
+                ht->buckets[hash_val] =curr->next;
+            }else{
+                prev->next=curr->next;
             }
-            if (*free_key && curr->key) (*free_key)(curr->key);
-            if (*free_data && curr->data) (*free_data)(curr->data);
-            ht->nentries--;
+            ht->nentries--; //ci sarà da mettere in mutua escusione??
+            freedata(curr->data);
             free(curr);
             return 0;
+
         }
-        prev = curr;
-        curr = curr->next;
+        prev= curr;
+        curr=curr->next;
     }
     return -1;
 }
+
+
+
 
 /**
  * Free hash table structures (key and data are freed using functions).
@@ -278,7 +230,7 @@ int icl_hash_delete(icl_hash_t *ht, void* key, void (*free_key)(void*), void (*f
  * @returns 0 on success, -1 on failure.
  */
 int
-icl_hash_destroy(icl_hash_t *ht, void (*free_key)(void*), void (*free_data)(void*))
+icl_hash_destroy(icl_hash_t *ht)
 {
     icl_entry_t *bucket, *curr, *next;
     int i;
@@ -289,14 +241,14 @@ icl_hash_destroy(icl_hash_t *ht, void (*free_key)(void*), void (*free_data)(void
         bucket = ht->buckets[i];
         for (curr=bucket; curr!=NULL; ) {
             next=curr->next;
-            if (*free_key && curr->key) (*free_key)(curr->key);
-            if (*free_data && curr->data) (*free_data)(curr->data);
+            freedata(curr->data);
             free(curr);
             curr=next;
         }
     }
 
     if(ht->buckets) free(ht->buckets);
+    if(ht->lkline) free(ht->lkline);
     if(ht) free(ht);
 
     return 0;
@@ -323,7 +275,7 @@ icl_hash_dump(FILE* stream, icl_hash_t* ht)
         bucket = ht->buckets[i];
         for(curr=bucket; curr!=NULL; ) {
             if(curr->key)
-                fprintf(stream, "icl_hash_dump: %s: %p\n", (char *)curr->key, curr->data);
+                fprintf(stream, "icl_hash_dump: %d: %d %s\n", curr->key, curr->data->len, curr->data->buf);
             curr=curr->next;
         }
     }
