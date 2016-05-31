@@ -12,8 +12,8 @@ typedef struct coda_fd{
 	nodo* coda;
 }coda_fd;
 
-
-
+//inizializzazione di una coda_fd
+coda_fd* initcoda();
 
 //restituisce il puntatore al nodo inserito prima del nodo passato come parametro
 nodo* insert_intesta( nodo* n, int c );
@@ -25,7 +25,7 @@ nodo* insert_incoda(nodo*n,int c);
 nodo* delete (nodo* n);
 
 //prende in ingresso la testa della lista e cancella tutta la lista
-nodo* delete_all(nodo* n);
+void delete_all(nodo* n);
 
 //cancella il file descpriptor dalla da chiamare con mutua esclusione
 void delete_fd(coda_fd* c,nodo * n);

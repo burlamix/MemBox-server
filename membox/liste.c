@@ -1,16 +1,6 @@
-typedef struct nodo {
-    struct nodo *next;
-    struct nodo *prec;
-    int info;
-} nodo;
-
-
-typedef struct coda_fd{
-	int lenght;
-	nodo* testa;
-	nodo* testa_attesa;
-	nodo* coda;
-}coda_fd;
+#include <stdlib.h>
+#include <stdio.h>
+#include "liste.h"
 
 
 coda_fd* initcoda(){
@@ -86,9 +76,10 @@ void delete_all(nodo* n){
 //cancella il file descpriptor dalla da chiamare con mutua esclusione
 void delete_fd(coda_fd* c,nodo * n){
 	if(n!=NULL && n->prec ==NULL){
-		c->testa=n->next;
+		c->testa=delete(n);
+	}else{
+		n->prec->next=delete(n);
 	}
-	delete(n);
 	c->lenght--;
 }
 

@@ -23,15 +23,13 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <message.h>
-#include "liste.c"    //momentaneo
+#include <liste.h>  
 #include <icl_hash.h>
 #include <connections.h>
 #include <op.h>
 #include <parse.h>
+#include <err_man.h>
 
-
-
-// #include <liste.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -44,27 +42,18 @@
 struct statistics  mboxStats = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 //_______________________________________________________________________________________________________strutture_________________________________
 
-
-
-
-
-//_________________________________________________________________________________________________variabili_di _codizione_______________________________________
-
-pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
+//coda dei fd relativi al socket
 coda_fd* coda_conn;
 
-//pthread_cond_t cond_repo = PTHREAD_COND_INITIALIZER;
-//pthread_mutex_t lk_repo = PTHREAD_MUTEX_INITIALIZER;
-//int repo_l=0;
-
-//pthread_mutex_t lk_job_c = PTHREAD_MUTEX_INITIALIZER;
-//int job_c=0;
-
+//repository
 icl_hash_t * repository; 
 
+//_________________________________________________________________________________________________variabili_di _codizione_______________________________________
+//variabili di mutua esclusione e di condizione per l'accesso alla coda dei fd relativi al socket
+pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
 
-// lista_fd l_fd=NULL;
+
 
 //_____________________________________________________________________________cose da finire___________________________________________________________
 
@@ -81,51 +70,52 @@ var_conf v_configurazione;
 
 void *dispatcher()
 {
-	printf("\n DISPATCHER PARTITO \n");fflush(stdout);
+	printf("\n DISPATCHER PARTITO \n");fflush(stdout);// da eliminare
 
 	int fd_skt, fd_c;
 	struct sockaddr_un sa;
 
 
 
-	(void) unlink(SOCKNAME);							//notare che le tre righe successive sono ricorrenti anche in connection.c si potrebbe fare una funzione he le chiama?
-	strncpy(sa.sun_path, SOCKNAME,UNIX_PATH_MAX);				/* sistemo l'indirizzo */
+	(void) unlink(SOCKNAME);															// sistemo l'indirizzo 
+	ec_null_ex(strncpy(sa.sun_path, SOCKNAME,UNIX_PATH_MAX), "impossibile creare path");		 
 	sa.sun_family = AF_UNIX;
 
-	fd_skt=socket(AF_UNIX,SOCK_STREAM,0);						/* preparo la socket */
-	bind( fd_skt , (struct sockaddr *) &sa , sizeof(sa) );
-	listen(fd_skt,SOMAXCONN);
+	ec_meno1_ex(fd_skt=socket(AF_UNIX,SOCK_STREAM,0),"impossibile creare socket");		// preparo il socket 
+	ec_meno1_ex(bind( fd_skt , (struct sockaddr *) &sa , sizeof(sa) ), "impossibile assegnare indirizzo a socket");
+	ec_meno1_ex(listen(fd_skt,SOMAXCONN),"impossibile accettare connessioni");
 
 	while(TRUE){
+			Pthread_mutex_lock(&lk_conn);
+			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ //si possono ancora accettare connessioni
+				Pthread_mutex_unlock(&lk_conn);
+				printf("	accept prima \n");	fflush(stdout);// da eliminare
+				//fallisce una connessione e buttiamo giù tutto?
+				ec_meno1_c(fd_c=accept(fd_skt,NULL,0), "connessione fallita", break);
 
-			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ // se posso ancora accettare connessioni posso non accederci in lock perchè i woker possono solo decrementare il valore
+				printf("	accept dopo \n");	fflush(stdout);// da eliminare
 
-				printf("	accept prima \n");	fflush(stdout);
-			fd_c=accept(fd_skt,NULL,0);
+				printf("	infilo prima \n");	fflush(stdout);// da eliminare
 
-				printf("	accept dopo \n");	fflush(stdout);
+				Pthread_mutex_lock(&lk_conn);
+				add_fd(coda_conn,fd_c);
+				printf("	infilo dopo \n");	fflush(stdout);//da eliminare
 
-				printf("	infilo prima \n");	fflush(stdout);
-
-				pthread_mutex_lock(&lk_conn);
-			add_fd(coda_conn,fd_c);
-				printf("	infilo dopo \n");	fflush(stdout);
-
-				pthread_cond_signal(&cond_nuovolavoro);
-				pthread_mutex_unlock(&lk_conn);
+				Pthread_cond_signal(&cond_nuovolavoro);
+				Pthread_mutex_unlock(&lk_conn);
 			}
-			else{								//ramo da controllarne il funzionamento correto
-				
-				fd_c=accept(fd_skt,NULL,0);
+			else{// impossibile accettare nuove connessioni connessioni
+				Pthread_mutex_unlock(&lk_conn);
+				ec_meno1_c(fd_c=accept(fd_skt,NULL,0),"connessione fallita", break);
 				message_t fail;
 				fail.hdr.op = OP_FAIL; 			//da definire poi un apposito messaggio per il numero massimo di connessioni raggiunto
-				sendRequest(fd_c, &fail); 
+				ec_meno1(sendRequest(fd_c, &fail),"impossibile inviare messaggio"); 
 			}
 
 	}
 
-	close(fd_skt);
-	unlink(SOCKNAME);
+	ec_meno1_ex(close(fd_skt),"impossibile chiudere socket");
+	ec_meno1_ex(unlink(SOCKNAME),"errore di unlink");
 
 	pthread_exit((void *) 0);
 	
@@ -133,7 +123,7 @@ void *dispatcher()
 
 void* worker(){
 
-	printf("\n WORKER PARTITO \n");fflush(stdout);
+	printf("\n WORKER PARTITO \n");fflush(stdout); //da eliminare
 
 	nodo* job;
 	int fd;
@@ -141,11 +131,11 @@ void* worker(){
 	message_t dati;
 
 	while(1){
-	pthread_mutex_lock(&lk_conn);
-		while(coda_conn->testa_attesa==NULL){//fare con una funzione
+	Pthread_mutex_lock(&lk_conn);
+		while(coda_conn->testa_attesa==NULL){//verifica la presenza di nuovi lavori
 			printf("	testa attesa è nulla \n");	fflush(stdout);
 
-			pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
+			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
 		}
 		printf("!!!!!!!!!!!!!!!!	worker \n");	fflush(stdout);
 
@@ -153,42 +143,45 @@ void* worker(){
 		job=coda_conn->testa_attesa;
 		fd=coda_conn->testa_attesa->info;
 		coda_conn->testa_attesa=coda_conn->testa_attesa->next;
-		pthread_mutex_unlock(&lk_conn);
+		Pthread_mutex_unlock(&lk_conn);
 		
 		
 
 		while(1)// e poi ci infiliamo una read
 		{	printf("!!!!!!!!!!!!!!!!	worker \n");	fflush(stdout);
-			read(fd, &dati.hdr ,sizeof(message_hdr_t));					//da implementare connnnn una fun, che fa tutto e gestisce quando la read sengla che il fd è stato chiuso
-			read(fd, &dati.data.len ,sizeof(int));
-			dati.data.buf = malloc(sizeof(char)*dati.data.len);
-			read(fd, dati.data.buf ,dati.data.len *sizeof(char));	
-		
-			pthread_mutex_lock(&(repository->lk_repo));
+			//il worker legge il messaggio 
+			ec_meno1_c(read(fd, &dati.hdr ,sizeof(message_hdr_t)),"errore lettura header messaggio", break);					//da implementare connnnn una fun, che fa tutto e gestisce quando la read sengla che il fd è stato chiuso
+			ec_meno1_c(read(fd, &dati.data.len ,sizeof(int)),"errore lettura dati messaggio", break);
+			ec_null_c(dati.data.buf = malloc(sizeof(char)*dati.data.len),"errore allocazione dato", break);
+			ec_meno1_c(read(fd, dati.data.buf ,dati.data.len *sizeof(char)),"errore lettura contenuto messaggio", free(dati.data.buf); break);	
+			
+			//controlla che la repository non sia bloccata da una operazione LOCK
+			Pthread_mutex_lock(&(repository->lk_repo));
 				while(repository->repo_l == 1){
-					pthread_cond_wait(&(repository->cond_repo),&(repository->lk_repo));
+					Pthread_cond_wait(&(repository->cond_repo),&(repository->lk_repo));
 				}
-			pthread_mutex_lock(&(repository->lk_job_c));
+			//se la repository non è bloccata viene incrementato il valore che identifica il numero di operazioni in esecuzione sulla repository
+			Pthread_mutex_lock(&(repository->lk_job_c));
 				repository->job_c++;							// !!!*!*!!! questo non va messo subito dopo il while sopra?
-			pthread_mutex_unlock(&repository->lk_job_c);
-			pthread_mutex_unlock(&(repository->lk_repo));
+			Pthread_mutex_unlock(&repository->lk_job_c);
+			Pthread_mutex_unlock(&(repository->lk_repo));
 
-			printf("lavoro \n");	fflush(stdout);
+			printf("lavoro \n");	fflush(stdout);		//da eliminare
+			//viene eseguita l'operazione richiesta
+			ec_meno1_c(ris_op = gest_op(dati,fd, repository), "operazione non identificata", free(dati.data.buf);break);
 
-			ris_op = gest_op(dati,fd, repository);
-
-			//liberare memoria del messaggio
-			pthread_mutex_lock(&(repository->lk_job_c));
+			free(dati.data.buf);
+			Pthread_mutex_lock(&(repository->lk_job_c));
 				repository->job_c--;
 				//nel caso in cui non ci siano più lavori in esecuzione allora viene attivata la lock
 				if(repository->job_c==0) 
-					pthread_cond_signal(&(repository->cond_job));
-			pthread_mutex_unlock(&(repository->lk_job_c));
+					Pthread_cond_signal(&(repository->cond_job));//nel caso nessuno abbia chiesto la lock la signal andrà persa
+			Pthread_mutex_unlock(&(repository->lk_job_c));
 	
 		}	
-		pthread_mutex_lock(&lk_conn);
+		Pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);
-		pthread_mutex_unlock(&lk_conn);
+		Pthread_mutex_unlock(&lk_conn);
 
 	}		
 }
