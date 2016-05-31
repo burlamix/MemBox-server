@@ -48,19 +48,23 @@ TARGETS		= membox	\
 		  
 # aggiungere qui i file oggetto da compilare
 OBJECTS		= connections.o		\
-			icl_hash.o			\
-			op.o 				\
-			parse.o
+			icl_hash.o		\
+			op.o 			\
+			parse.o			\
+			liste.o			\
+			err_man.o
 
 
 # aggiungere qui gli altri include 
 INCLUDE_FILES   = connections.h \
 				message.h     	\
-				ops.h	  		\
-				stats.h 		\
+				ops.h	  	\
+				stats.h 	\
 				icl_hash.h   	\
-				op.h 			\
-				parse.h
+				op.h 		\
+				parse.h		\
+				liste.h		\
+				err_man.h
 		  
 
 
@@ -76,7 +80,7 @@ INCLUDE_FILES   = connections.h \
 all		: $(TARGETS)
 
 
-membox: membox.o libmbox.a $(INCLUDE_FILES)
+membox: membox.o libmbox.a 
 	$(CC) $(CFLAGS) $(INCLUDES) $(OPTFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 client: client.o connections.o message.h
