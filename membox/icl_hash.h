@@ -32,6 +32,9 @@ typedef struct icl_entry_s {
 typedef struct icl_hash_s {
     int nbuckets;
     int nentries;
+    int StorageSize;
+    int StorageByteSize;
+    int MaxObjSize;
     //per accedere alla repository in mutua esclusione:
     pthread_mutex_t lk_repo;
     int repo_l;
@@ -50,7 +53,7 @@ typedef struct icl_hash_s {
 
 
 icl_hash_t *
-icl_hash_create( int nbuckets);
+icl_hash_create( int nbuckets, int ss, int sbs, int mos);
 
 void freedata(message_data_t* aus);
 

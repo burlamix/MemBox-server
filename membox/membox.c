@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
 	parse(argv[2], &v_configurazione);
 	threadinpool = malloc(v_configurazione.ThreadsInPool*(sizeof(pthread_t)));
 
-	repository = icl_hash_create( NB);
+	repository = icl_hash_create( NB, v_configurazione.StorageSize, v_configurazione.StorageByteSize, v_configurazione.MaxObjSize);
 
 	pthread_create(&disp, NULL, dispatcher,NULL);
 	for(int i=0;i<v_configurazione.ThreadsInPool;i++){

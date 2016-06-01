@@ -27,7 +27,7 @@ static inline int ulong_key_compare( void *key1, void *key2  ) {
 
 int main() {
 
-    icl_hash_t *hash = icl_hash_create(1024);
+    icl_hash_t *hash = icl_hash_create(1024, 0,0,0);
     message_data_t** aus=malloc(5*sizeof(message_data_t*));
     
     long key1 = 1;

@@ -39,13 +39,13 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
    message_hdr_t risp;
   int newdim= SizeOfRep(repository) + (sizeof(char)*len) + sizeof(unsigned int);
   //si verifica che la repository non abbia raggiunto il massimo numero di elementi
-  if ( StorageSize!=0 && repository->nentries >= StorageSize){
+  if ( repository->StorageSize!=0 && repository->nentries >= repository->StorageSize){
     risp.op= OP_PUT_TOOMANY;
     sendReply( fd, &risp);
     return 0;
   }
   //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
-  if(StorageByteSize!=0 && newdim>= StorageByteSize){
+  if(repository->StorageByteSize!=0 && newdim>= repository->StorageByteSize){
     risp.op= OP_PUT_REPOSIZE;
     sendReply( fd, &risp);
     return 0;
@@ -58,7 +58,7 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
   dato->len=len;
   dato->buf=buff;
 
-  if (MaxObjSize!=0 && sizeof(dato)> MaxObjSize){
+  if (repository->MaxObjSize!=0 && sizeof(dato)> repository->MaxObjSize){
     // free(dato->buf);
     // free(dato);
     risp.op= OP_PUT_SIZE;

@@ -78,7 +78,7 @@ void freedata(message_data_t* aus) {
  */
 
 icl_hash_t *
-icl_hash_create( int nbuckets){
+icl_hash_create( int nbuckets, int ss, int sbs, int mos){
     icl_hash_t *ht;
     int i;
 
@@ -87,7 +87,9 @@ icl_hash_create( int nbuckets){
 
     ht->nbuckets = nbuckets;
     ht->nentries = 0;
-    
+    ht->StorageSize=ss;
+    ht->StorageByteSize=sbs;
+    ht->MaxObjSize=mos;
     pthread_mutex_init(&ht->lk_repo, NULL);
     ht->repo_l=0;
     ht->fd=-1;
