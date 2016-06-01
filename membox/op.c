@@ -18,25 +18,34 @@ int sendReply(long fd, message_hdr_t *hdr){
 }
 
 int SizeOfRep( icl_hash_t* repo){
-  int size;
-  size= sizeof(icl_hash_t)+ (repo->nbuckets * sizeof( icl_entry_t*)) ;
-  size=+ (repo->nentries * sizeof(unsigned long)); //dimensione key
-  size=+ (repo->nentries * sizeof(message_data_t)); //dimensione dato
-  size=+ (repo->nentries* sizeof(icl_entry_t*)); //dimesione puntatore
-  return size;
+  icl_entry_t *bucket, *curr;
+    int i,size;
+
+    if(!repo) return -1;
+
+    size=0;
+    for(i=0; i<repo->nbuckets; i++) {
+        bucket = repo->buckets[i];
+        for(curr=bucket; curr!=NULL;curr=curr->next) {
+          size=+sizeof(curr->data);  
+        }
+    }
+
+    return size;
 }
 
+
 int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t key,int fd){
-  message_hdr_t risp;
-  int newdim= SizeOfRep(repository) + (sizeof(unsigned long)) + (sizeof(message_data_t)) + (sizeof(icl_entry_t*));
+   message_hdr_t risp;
+  int newdim= SizeOfRep(repository) + (sizeof(char)*len) + sizeof(unsigned int);
   //si verifica che la repository non abbia raggiunto il massimo numero di elementi
-  if ( repository->nentries >= StorageSize){
+  if ( StorageSize!=0 && repository->nentries >= StorageSize){
     risp.op= OP_PUT_TOOMANY;
     sendReply( fd, &risp);
     return 0;
   }
   //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
-  if(newdim>= StorageByteSize){
+  if(StorageByteSize!=0 && newdim>= StorageByteSize){
     risp.op= OP_PUT_REPOSIZE;
     sendReply( fd, &risp);
     return 0;
@@ -49,7 +58,7 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
   dato->len=len;
   dato->buf=buff;
 
-  if (sizeof(dato)> MaxObjSize){
+  if (MaxObjSize!=0 && sizeof(dato)> MaxObjSize){
     // free(dato->buf);
     // free(dato);
     risp.op= OP_PUT_SIZE;
