@@ -108,7 +108,7 @@ killmbox:
 test1: 
 	make cleanall
 	make all
-	./membox -f DATA/membox.conf1&
+	valgrind ./membox -f DATA/membox.conf1&
 	./client -l $(UNIX_PATH) -c 0:0:8192
 	./client -l $(UNIX_PATH) -c 0:1:8192
 	./client -l $(UNIX_PATH) -c 0:2:0

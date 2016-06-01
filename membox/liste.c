@@ -93,7 +93,6 @@ void add_fd( coda_fd* c, int fd){
 	}
 	if(c->testa_attesa==NULL){
 			c->testa_attesa= c->coda;
-		printf("ciao!\n");
 	}
 	
 }

@@ -78,7 +78,7 @@ void *dispatcher()
 
 
 	(void) unlink(SOCKNAME);															// sistemo l'indirizzo 
-	ec_null_ex(strncpy(sa.sun_path, SOCKNAME,UNIX_PATH_MAX), "impossibile creare path");		 
+	ec_null_ex(strncpy(sa.sun_path, v_configurazione.UnixPath,UNIX_PATH_MAX), "impossibile creare path");		 
 	sa.sun_family = AF_UNIX;
 
 	ec_meno1_ex(fd_skt=socket(AF_UNIX,SOCK_STREAM,0),"impossibile creare socket");		// preparo il socket 
@@ -89,18 +89,13 @@ void *dispatcher()
 			Pthread_mutex_lock(&lk_conn);
 			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ //si possono ancora accettare connessioni
 				Pthread_mutex_unlock(&lk_conn);
-				printf("	accept prima \n");	fflush(stdout);// da eliminare
 				//fallisce una connessione e buttiamo giù tutto?
 				ec_meno1_c(fd_c=accept(fd_skt,NULL,0), "connessione fallita", break);
 
-				printf("	accept dopo \n");	fflush(stdout);// da eliminare
-
-				printf("	infilo prima \n");	fflush(stdout);// da eliminare
+				printf("\n\nnuova connessione accettata -> si procede all'inserimento del fd nella lista\n");
 
 				Pthread_mutex_lock(&lk_conn);
 				add_fd(coda_conn,fd_c);
-				printf("	infilo dopo \n");	fflush(stdout);//da eliminare
-
 				Pthread_cond_signal(&cond_nuovolavoro);
 				Pthread_mutex_unlock(&lk_conn);
 			}
@@ -109,7 +104,7 @@ void *dispatcher()
 				ec_meno1_c(fd_c=accept(fd_skt,NULL,0),"connessione fallita", break);
 				message_t fail;
 				fail.hdr.op = OP_FAIL; 			//da definire poi un apposito messaggio per il numero massimo di connessioni raggiunto
-				ec_meno1(sendRequest(fd_c, &fail),"impossibile inviare messaggio"); 
+				ec_meno1(sendRequest(fd_c, &fail),"impossibile inviare messaggio");  
 			}
 
 	}
@@ -147,17 +142,18 @@ void* worker(){
 	while(1){
 	Pthread_mutex_lock(&lk_conn);
 		while(coda_conn->testa_attesa==NULL){//verifica la presenza di nuovi lavori
-			printf("	testa attesa è nulla \n");	fflush(stdout);
+			printf("	testa attesa è nulla -> il worker si sospende\n");	fflush(stdout);
 
 			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
 		}
-		printf("\n worker si sveglia e prende un client \n");	fflush(stdout);
 
+		printf("\n worker si sveglia e procede a prendere una nuova connessione,");	fflush(stdout);
 		// fare con una funzione
 		job=coda_conn->testa_attesa;
 		fd=coda_conn->testa_attesa->info;
 		coda_conn->testa_attesa=coda_conn->testa_attesa->next;
 		Pthread_mutex_unlock(&lk_conn);
+		printf(" l'fd della nuova connessione è %d\n",fd);	fflush(stdout);
 		
 		i=0;
 		while(read_fd(fd,&dati))// e poi ci infiliamo una read
