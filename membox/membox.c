@@ -120,6 +120,19 @@ void *dispatcher()
 	pthread_exit((void *) 0);
 	
 }
+// momentaneamente l'ho messa qui, dove altro si può mettere sennò?
+int read_fd (int fd,message_t* dati){
+	
+	//il worker legge il messaggio 
+
+	if (read(fd, &dati->hdr ,sizeof(message_hdr_t)) == 0)  return 0; 		// qui è dove c'ho perso più di un ora
+
+	ec_meno1_c(read(fd, &dati->data.len ,sizeof(int)),"errore lettura dati messaggio", NULL);
+	ec_null_c(dati->data.buf = malloc(sizeof(char)*dati->data.len),"errore allocazione dato", NULL);
+	ec_meno1_c(read(fd, dati->data.buf ,dati->data.len *sizeof(char)),"errore lettura contenuto messaggio", free(dati->data.buf); NULL);	
+
+	return 1;
+}
 
 void* worker(){
 
@@ -127,6 +140,7 @@ void* worker(){
 
 	nodo* job;
 	int fd;
+	int i;
 	int ris_op;
 	message_t dati;
 
@@ -137,7 +151,7 @@ void* worker(){
 
 			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
 		}
-		printf("!!!!!!!!!!!!!!!!	worker \n");	fflush(stdout);
+		printf("\n worker si sveglia e prende un client \n");	fflush(stdout);
 
 		// fare con una funzione
 		job=coda_conn->testa_attesa;
@@ -145,16 +159,13 @@ void* worker(){
 		coda_conn->testa_attesa=coda_conn->testa_attesa->next;
 		Pthread_mutex_unlock(&lk_conn);
 		
-		
+		i=0;
+		while(read_fd(fd,&dati))// e poi ci infiliamo una read
+		{	
 
-		while(1)// e poi ci infiliamo una read
-		{	printf("!!!!!!!!!!!!!!!!	worker \n");	fflush(stdout);
-			//il worker legge il messaggio 
-			ec_meno1_c(read(fd, &dati.hdr ,sizeof(message_hdr_t)),"errore lettura header messaggio", break);					//da implementare connnnn una fun, che fa tutto e gestisce quando la read sengla che il fd è stato chiuso
-			ec_meno1_c(read(fd, &dati.data.len ,sizeof(int)),"errore lettura dati messaggio", break);
-			ec_null_c(dati.data.buf = malloc(sizeof(char)*dati.data.len),"errore allocazione dato", break);
-			ec_meno1_c(read(fd, dati.data.buf ,dati.data.len *sizeof(char)),"errore lettura contenuto messaggio", free(dati.data.buf); break);	
+			printf("\n i=%d, worker esegue una richiesta di %d del client su fd = %d \n",i,dati.hdr.op,fd);	fflush(stdout);
 			
+
 			//controlla che la repository non sia bloccata da una operazione LOCK
 			Pthread_mutex_lock(&(repository->lk_repo));
 				while(repository->repo_l == 1){
@@ -166,7 +177,6 @@ void* worker(){
 			Pthread_mutex_unlock(&repository->lk_job_c);
 			Pthread_mutex_unlock(&(repository->lk_repo));
 
-			printf("lavoro \n");	fflush(stdout);		//da eliminare
 			//viene eseguita l'operazione richiesta
 			ec_meno1_c(ris_op = gest_op(dati,fd, repository), "operazione non identificata", free(dati.data.buf);break);
 

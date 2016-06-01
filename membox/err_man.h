@@ -21,6 +21,12 @@
 #define ec_null_c(s,m,c)\
 	if((s)==NULL){ perror(m); c;}
 
+//quella che da problemi
+
+#define ec_meno1_r(s,m,c)\
+	if((s)==-1){ perror(m); c;}\
+	if((s)==0){ printf("\n\n\nciao\n\n\n\n");return 0;}
+
 
 #define Pthread_create(thread_id, attr, start_fnc, arg) \
 	if((int cod=pthread_create (thread_id, attr,start_fnc, arg))!=0){ perror("error in pthread create:");exit(EXIT_FAILURE);}
