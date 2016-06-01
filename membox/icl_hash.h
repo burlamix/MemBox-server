@@ -24,7 +24,7 @@ typedef struct {
 } icl_entry_lk;
 
 typedef struct icl_entry_s {
-    unsigned int key;
+    unsigned long key;
     message_data_t* data;
     struct icl_entry_s* next;
 } icl_entry_t;
@@ -55,14 +55,14 @@ icl_hash_create( int nbuckets);
 void freedata(message_data_t* aus);
 
 message_data_t *
-icl_hash_find(icl_hash_t *, unsigned int );
+icl_hash_find(icl_hash_t *, unsigned long );
 
 int
- icl_hash_insert(icl_hash_t *, unsigned int, message_data_t*);
+ icl_hash_insert(icl_hash_t *, unsigned long, message_data_t*);
 
 
 int
- icl_hash_delete( icl_hash_t *ht, unsigned int key);
+ icl_hash_delete( icl_hash_t *ht, unsigned long key);
 
 int
 icl_hash_destroy(icl_hash_t *ht);

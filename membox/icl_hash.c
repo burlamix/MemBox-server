@@ -42,6 +42,8 @@
  *
  * @returns the hash index
  */
+
+
 static unsigned int
 hash_pjw(void* key)
 {
@@ -58,10 +60,6 @@ hash_pjw(void* key)
     return (hash_value);
 }
 
-static int string_compare(void* a, void* b) 
-{
-    return (strcmp( (char*)a, (char*)b ) == 0);
-}
 
 void freedata(message_data_t* aus) {
   free(aus->buf);
@@ -87,22 +85,26 @@ icl_hash_create( int nbuckets){
     ht= (icl_hash_t*)malloc(sizeof(icl_hash_t));
     if(!ht) return NULL;
 
+    ht->nbuckets = nbuckets;
     ht->nentries = 0;
+    
     pthread_mutex_init(&ht->lk_repo, NULL);
     ht->repo_l=0;
     ht->fd=-1;
     //gestione errore
     pthread_cond_init(&ht->cond_repo,NULL);
+    
     pthread_mutex_init(&ht->lk_job_c, NULL);
     ht->job_c=0;
     //gestione errore
     pthread_cond_init(&ht->cond_job,NULL);
+    
+    
     ht->buckets = (icl_entry_t**)malloc(nbuckets * sizeof(icl_entry_t*));
     if(!ht->buckets) return NULL;
     ht->lkline = (icl_entry_lk*)malloc(nbuckets * sizeof(icl_entry_lk));
     if(!ht->lkline) return NULL;
 
-    ht->nbuckets = nbuckets;
     for(i=0;i<ht->nbuckets;i++){
         ht->buckets[i] = NULL;
         pthread_cond_init(&(ht->lkline[i].cond_line),NULL);
@@ -125,12 +127,13 @@ icl_hash_create( int nbuckets){
  */
 
 message_data_t *
-icl_hash_find(icl_hash_t *ht, unsigned int key){
+icl_hash_find(icl_hash_t *ht, unsigned long key){
     icl_entry_t* curr;
     unsigned int hash_val;
 
     if(!ht || !key) return NULL;
-    hash_val= hash_pjw((void*)(long)key)% ht->nbuckets;
+   
+    hash_val= hash_pjw((void*)key)% ht->nbuckets;
 
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
         if ( curr->key==key)
@@ -151,14 +154,16 @@ icl_hash_find(icl_hash_t *ht, unsigned int key){
  */
 
 int
-icl_hash_insert(icl_hash_t *ht, unsigned int key, message_data_t* data)
+icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
 {
     icl_entry_t *curr;
     unsigned int hash_val;
 
-    if(!ht || !key) return -3;
+    if(!ht) return -3;
 
-    hash_val=hash_pjw((void*)(long)key)% ht->nbuckets;
+   
+    hash_val=hash_pjw((void*)key)% ht->nbuckets;
+
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
         if ( curr->key==key)
             return(-2); /* key already exists */
@@ -170,7 +175,6 @@ icl_hash_insert(icl_hash_t *ht, unsigned int key, message_data_t* data)
     curr->key = key;
     curr->data = data;
     curr->next = ht->buckets[hash_val]; /* add at start */
-
     ht->buckets[hash_val] = curr;
     ht->nentries++;
 
@@ -190,15 +194,15 @@ icl_hash_insert(icl_hash_t *ht, unsigned int key, message_data_t* data)
  * @returns 0 on success, -1 on failure.
  */
 
-int icl_hash_delete(icl_hash_t *ht, unsigned int key ){
+int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
     icl_entry_t *curr, *prev;
     unsigned int hash_val;
     if(!ht || !key) return -1;
 
-    hash_val=hash_pjw((void*)(long)key)% ht->nbuckets;
+    hash_val=hash_pjw((void*)key)% ht->nbuckets;
 
     prev= NULL;
-    for(curr=ht->buckets[hash_val]; curr !=NULL; curr=curr->next){
+    for(curr=ht->buckets[hash_val]; curr !=NULL;curr=curr->next){
         if(curr->key==key){
             if(prev==NULL){
                 ht->buckets[hash_val] =curr->next;
@@ -212,7 +216,6 @@ int icl_hash_delete(icl_hash_t *ht, unsigned int key ){
 
         }
         prev= curr;
-        curr=curr->next;
     }
     return -1;
 }
@@ -275,7 +278,7 @@ icl_hash_dump(FILE* stream, icl_hash_t* ht)
         bucket = ht->buckets[i];
         for(curr=bucket; curr!=NULL; ) {
             if(curr->key)
-                fprintf(stream, "icl_hash_dump: %d: %d %s\n", curr->key, curr->data->len, curr->data->buf);
+                fprintf(stream, "icl_hash_dump: %ld: %d %s\n", curr->key, curr->data->len, curr->data->buf);
             curr=curr->next;
         }
     }
