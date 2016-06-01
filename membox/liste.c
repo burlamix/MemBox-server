@@ -39,8 +39,8 @@ nodo* insert_incoda(nodo*n,int c){
 		new->next=NULL;
 	}else{
 		new->prec=n;
-		n->next=new;
 		new->next=n->next;
+		n->next=new;
 		if(new->next!=NULL) new->next->prec=new;
 		
 	}
