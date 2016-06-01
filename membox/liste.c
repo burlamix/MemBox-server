@@ -53,9 +53,9 @@ nodo* delete (nodo* n){
 	if(n!=NULL){
 		nodo* aus;
 		aus=n->next;
-		if(n->prec!=NULL)
+		if(n->prec!=NULL){
 			aus->prec=n->prec;
-			n->prec->next=aus;
+			n->prec->next=aus;}
 		free(n);
 		return aus;
 	}else return NULL;

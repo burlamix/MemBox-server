@@ -60,15 +60,18 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
   switch (op){
     case 0 :
       risp.op= OP_OK;
+      break;
     case -1 :
     case -3 :
       risp.op= OP_FAIL;
       // free(dato->buf);
       // free(dato);
+      break;
     case -2 :
       risp.op= OP_PUT_ALREADY;
       // free(dato->buf);
       // free(dato);
+      break;
   }
   sendReply( fd, &risp);
   return 0;
@@ -101,7 +104,6 @@ int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
   }else{
     risp.op=OP_REMOVE_NONE;
   }
-  printf("\n\n risp.op = %s \n\n\n", risp.op);
     sendReply( fd, &risp);
   return 0;
 }
