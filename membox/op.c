@@ -44,8 +44,11 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
 
   int op;
   message_data_t* dato= malloc(sizeof(message_data_t));
+  dato->buf= malloc(sizeof(len));
+
   dato->len=len;
   dato->buf=buff;
+
   if (sizeof(dato)> MaxObjSize){
     // free(dato->buf);
     // free(dato);
