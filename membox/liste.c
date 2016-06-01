@@ -38,11 +38,11 @@ nodo* insert_incoda(nodo*n,int c){
 		new->prec=NULL;
 		new->next=NULL;
 	}else{
-		new->next=n->next;
-		new->next->prec=new;
 		new->prec=n;
 		n->next=new;
-
+		new->next=n->next;
+		if(new->next!=NULL) new->next->prec=new;
+		
 	}
 	return new;
 
@@ -52,10 +52,15 @@ nodo* insert_incoda(nodo*n,int c){
 nodo* delete (nodo* n){
 	if(n!=NULL){
 		nodo* aus;
-		aus=n->next;
-		if(n->prec!=NULL){
+		if(n->prec!=NULL && n->next!=NULL){
+			aus=n->next;
 			aus->prec=n->prec;
-			n->prec->next=aus;}
+			n->prec->next=aus;
+		}else{
+			if(n->prec==NULL)
+				aus=n->next;
+			else aus=NULL;
+		}
 		free(n);
 		return aus;
 	}else return NULL;
