@@ -80,6 +80,12 @@ void delete_all(nodo* n){
 
 //cancella il file descpriptor dalla da chiamare con mutua esclusione
 void delete_fd(coda_fd* c,nodo * n){
+	if( n== c->testa_attesa){
+		c->testa_attesa=n->next;
+	}
+	if(n->next== NULL && c->coda==n){
+		c->coda=n->prec;
+	}
 	if(n!=NULL && n->prec ==NULL){
 		c->testa=delete(n);
 	}else{
