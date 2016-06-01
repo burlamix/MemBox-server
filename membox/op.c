@@ -80,6 +80,8 @@ int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t
   
   if(dato==NULL){
     risp.op= OP_UPDATE_NONE;
+    sendReply( fd, &risp);
+    return 0;
   }
   if (dato->len != len){
     risp.op= OP_UPDATE_SIZE; 
@@ -99,6 +101,7 @@ int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
   }else{
     risp.op=OP_REMOVE_NONE;
   }
+  printf("\n\n risp.op = %s \n\n\n", risp.op);
     sendReply( fd, &risp);
   return 0;
 }
