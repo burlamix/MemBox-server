@@ -13,7 +13,7 @@ int MaxObjSize= 100;
 
 
 int sendReply(long fd, message_hdr_t *hdr){
-  write(fd, &hdr ,sizeof(message_hdr_t));
+  write(fd, hdr ,sizeof(message_hdr_t));
   return 0;
 }
 
@@ -47,8 +47,8 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
   dato->len=len;
   dato->buf=buff;
   if (sizeof(dato)> MaxObjSize){
-    free(dato->buf);
-    free(dato);
+    // free(dato->buf);
+    // free(dato);
     risp.op= OP_PUT_SIZE;
     sendReply( fd, &risp);
     return 0;
@@ -60,12 +60,12 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
     case -1 :
     case -3 :
       risp.op= OP_FAIL;
-      free(dato->buf);
-      free(dato);
+      // free(dato->buf);
+      // free(dato);
     case -2 :
       risp.op= OP_PUT_ALREADY;
-      free(dato->buf);
-      free(dato);
+      // free(dato->buf);
+      // free(dato);
   }
   sendReply( fd, &risp);
   return 0;
