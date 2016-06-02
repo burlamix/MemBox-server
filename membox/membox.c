@@ -195,6 +195,11 @@ void* worker(){
 		Pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);
 		Pthread_mutex_unlock(&lk_conn);
+		
+		// printf("\n-----------------------------dump----------------------------------\n");
+  // 	 	 icl_hash_dump(stdout, repository);
+		// printf("\n------------------------------------------------------------------\n");
+ 
 		printf("\n_____________________________________________fine___________________________________________________________\n\n");	fflush(stdout);
 
 	}		

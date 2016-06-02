@@ -79,13 +79,36 @@ int readHeader(long fd, message_hdr_t *hdr){
  */
 int readData(long fd, message_data_t *data){
 	if (read(fd, &(data->len) ,sizeof(int))==0 ) return 0;
+//-------------------------
+	// data->buf = malloc((data->len));
+	// int r;
+	// r=read(fd, data->buf ,(data->len) );
+	// if(r==0) return 0;
+	// printf("********************read legge %d\n",r );
+//-------------------------------
 
-	data->buf = malloc((data->len));
+	data->buf = malloc(data->len);
+	printf("\n|||||||||||||||||||||||||||||| %d  ||||||||||||||||||||||\n", data->buf);
 	int r;
-	r=read(fd, data->buf ,(data->len) );
-	if(r==0) return 0;
+	int letto=0;
+	int i=0;
 
-	printf("********************read legge %d\n",r );
+	while(letto < data->len){
+		
+		char* aus = malloc(4096);
+		r =	read(fd, aus ,4096 );
+
+		// printf("********%d************read legge %d\n",i,r );
+
+		strcat(data->buf,aus);
+		free(aus);
+
+		letto = letto + 4096;
+		i++;
+	}
+    printf("\n?????????????????????????????????????  %d  ???????????????????????????????\n\n", data->buf);
+
+
 	return 1;
 }
 

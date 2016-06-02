@@ -180,10 +180,7 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
     ht->buckets[hash_val] = curr;
     ht->nentries++;
 
-printf("\n-----------------------------dump----------------------------------\n");
-    icl_hash_dump(stdout, ht);
-printf("\n------------------------------------------------------------------\n");
-    
+   
     fflush(stdout);
 
     return 0;
@@ -286,7 +283,7 @@ icl_hash_dump(FILE* stream, icl_hash_t* ht)
         bucket = ht->buckets[i];
         for(curr=bucket; curr!=NULL;curr=curr->next ) {
             if(curr->key>=0)
-                fprintf(stream, "icl_hash_dump: %ld: %d %s\n", curr->key, curr->data->len, (char*)curr->data->buf);
+                fprintf(stream, "icl_hash_dump: %ld: %d %d\n", curr->key, curr->data->len, (char*)curr->data->buf);
                 fflush(stream);
         }
     }

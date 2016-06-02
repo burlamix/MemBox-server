@@ -92,12 +92,16 @@ static int execute_op(int connfd, operation_t *o) {
     setHeader(&msg, op, &key);
     if (op == PUT_OP || op == UPDATE_OP) {
 	char *buf = malloc(size);
+	    printf("\n))))))))))))))))))))))))))))))))))))  %d  ((((((((((((((((((((((((((((((((\n", msg.data.buf);
+
 	if (buf == NULL) {
 	    perror("malloc");
 	    return -1;
 	}
 	init_data(&key, buf, size);
 	setData(&msg, buf, size);
+    printf("\n!!!!!!!!!!!!!!!!!!!!!!!!!!  %d!!!!!!!!!!!!!!!!!!!!!!!!!\n", msg.data.buf);
+
     } 
     if (sendRequest(connfd, &msg) == -1 && (errno != EPIPE)) {
 	perror("request");
