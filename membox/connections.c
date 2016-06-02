@@ -65,8 +65,7 @@ int openConnection(char* path, unsigned int ntimes, unsigned int secs){
  * @return 0 in caso di successo -1 in caso di errore
  */
 int readHeader(long fd, message_hdr_t *hdr){
-	read(fd, hdr ,sizeof(message_hdr_t));
-	return 0;
+	return (read(fd, hdr ,sizeof(message_hdr_t)));
 }
 
 /**
@@ -79,10 +78,15 @@ int readHeader(long fd, message_hdr_t *hdr){
  * @return 0 in caso di successo -1 in caso di errore
  */
 int readData(long fd, message_data_t *data){
-	read(fd, &(data->len) ,sizeof(int));
-	data->buf = malloc(sizeof(char)*(data->len));
-	read(fd, data->buf ,(data->len) *sizeof(char));
-	return 0;
+	if (read(fd, &(data->len) ,sizeof(int))==0 ) return 0;
+
+	data->buf = malloc((data->len));
+	int r;
+	r=read(fd, data->buf ,(data->len) );
+	if(r==0) return 0;
+
+	printf("********************read legge %d\n",r );
+	return 1;
 }
 
 
@@ -102,8 +106,11 @@ int readData(long fd, message_data_t *data){
  */
 int sendRequest(long fd, message_t *msg){
 	write(fd, &msg->hdr ,sizeof(message_hdr_t));
-	write(fd, &((msg->data).len ),sizeof(int));
-	write(fd, (msg->data).buf , ((msg->data).len) * sizeof(char) );
+
+	if(msg->hdr.op == PUT_OP || msg->hdr.op == UPDATE_OP ){
+		write(fd, &((msg->data).len ),sizeof(int));
+		write(fd, (msg->data).buf , ((msg->data).len)  );
+	}
 	return 0;
 }
 

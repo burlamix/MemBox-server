@@ -107,7 +107,6 @@ int update_op(message_t* new_mex, icl_hash_t* repository, int fd){
 int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
 
   int op= icl_hash_delete( repository, key);
-  printf("-----------------------%d------------------\n",op );
    message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
   if (op==0){
     risp->op= OP_OK;

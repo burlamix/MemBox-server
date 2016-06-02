@@ -119,13 +119,12 @@ void *dispatcher()
 int read_fd (int fd,message_t* dati){
 	
 	//il worker legge il messaggio 
-
 	if (read(fd, &dati->hdr ,sizeof(message_hdr_t)) == 0)  return 0; 		// qui è dove c'ho perso più di un ora
 
 	ec_meno1_c(read(fd, &dati->data.len ,sizeof(int)),"errore lettura dati messaggio", NULL);
 	ec_null_c(dati->data.buf = malloc(sizeof(char)*dati->data.len),"errore allocazione dato", NULL);
-	ec_meno1_c(read(fd, dati->data.buf ,dati->data.len *sizeof(char)),"errore lettura contenuto messaggio", free(dati->data.buf); NULL);	
-
+	read(fd, dati->data.buf ,dati->data.len *sizeof(char));	
+	// printf("\nla read ha letto %d\n", a);
 	return 1;
 }
 //dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
@@ -135,19 +134,20 @@ void* worker(){
 
 	nodo* job;
 	int fd;
-	int i;
+	int i,a;
 	int ris_op;
 	message_t *dati =calloc(1,sizeof(message_t));
 
 	while(1){
 	Pthread_mutex_lock(&lk_conn);
 		while(coda_conn->testa_attesa==NULL){//verifica la presenza di nuovi lavori
-			printf("	testa attesa è nulla -> il worker si sospende\n");	fflush(stdout);
+			printf("testa attesa è nulla -> il worker si sospende\n");	fflush(stdout);
 
 			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
 		}
+		printf("\n\n\n\n__________________________________inizio______________________________________________________________________");	fflush(stdout);
 
-		printf("\n worker si sveglia e procede a prendere una nuova connessione,");	fflush(stdout);
+		printf("\nworker si sveglia e procede a prendere una nuova connessione,");	fflush(stdout);
 		// fare con una funzione
 		job=coda_conn->testa_attesa;
 		fd=coda_conn->testa_attesa->info;
@@ -156,10 +156,16 @@ void* worker(){
 		printf(" l'fd della nuova connessione è %d\n",fd);	fflush(stdout);
 		
 		i=0;
-		while(read_fd(fd,dati))// e poi ci infiliamo una read
+		a=1;
+		while(readHeader(fd, &dati->hdr) && a)// e poi ci infiliamo una read
 		{	
+			if(dati->hdr.op == PUT_OP || dati->hdr.op == UPDATE_OP ){
+				a=readData(fd,&dati->data);
+			}else{
+					printf("********************read non legge! \n" );
+			}
 
-			printf("\n i=%d, worker esegue una richiesta di %d del client su fd = %d, ",i,dati->hdr.op,fd);	fflush(stdout);
+			printf("i=%d, worker esegue una richiesta di %d del client su fd = %d, ",i,dati->hdr.op,fd);	fflush(stdout);
 			
 
 			//controlla che la repository non sia bloccata da una operazione LOCK
@@ -189,6 +195,7 @@ void* worker(){
 		Pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);
 		Pthread_mutex_unlock(&lk_conn);
+		printf("\n_____________________________________________fine___________________________________________________________\n\n");	fflush(stdout);
 
 	}		
 }
