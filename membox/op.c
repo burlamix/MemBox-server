@@ -39,33 +39,28 @@ int SizeOfRep( icl_hash_t* repo){
 int put_op(message_t* new_data,  icl_hash_t* repository,  int fd){
   
   message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
-  // int newdim= SizeOfRep(repository) + (sizeof(char)*len) + sizeof(unsigned int);
-  // //si verifica che la repository non abbia raggiunto il massimo numero di elementi
-  // if ( repository->StorageSize!=0 && repository->nentries >= repository->StorageSize){
-  //   risp->op= OP_PUT_TOOMANY;
-  //   sendReply( fd, risp);
-  //   return 0;
-  // }
-  // //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
-  // if(repository->StorageByteSize!=0 && newdim>= repository->StorageByteSize){
-  //   risp->op= OP_PUT_REPOSIZE;
-  //   sendReply( fd, risp);
-  //   return 0;
-  // } 
+  int newdim= SizeOfRep(repository) + (sizeof(char)*new_data->data.len) + sizeof(unsigned int);
+  //si verifica che la repository non abbia raggiunto il massimo numero di elementi
+  if ( repository->StorageSize!=0 && repository->nentries >= repository->StorageSize){
+    risp->op= OP_PUT_TOOMANY;
+    sendReply( fd, risp);
+    return 0;
+  }
+  //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
+  if(repository->StorageByteSize!=0 && newdim>= repository->StorageByteSize){
+    risp->op= OP_PUT_REPOSIZE;
+    sendReply( fd, risp);
+    return 0;
+  } 
 
   int op;
-  // message_data_t* dato= calloc(1,sizeof(message_data_t));
-  // dato->buf= malloc(sizeof(char)*len);
-  // dato->len=len;
-  // strcpy(dato->buf,buff);
 
-  // if (repository->MaxObjSize!=0 && sizeof(dato)> repository->MaxObjSize){
-  //   // free(dato->buf);
-  //   // free(dato);
-  //   risp->op= OP_PUT_SIZE;
-  //   sendReply( fd, risp);
-  //   return 0;
-  // }
+  if (repository->MaxObjSize!=0 && sizeof(new_data->data)> repository->MaxObjSize){
+    risp->op= OP_PUT_SIZE;
+    sendReply( fd, risp);
+    return 0;
+  }
+
   op=icl_hash_insert( repository, new_data->hdr.key, &new_data->data);
   switch (op){
     case 0 :
@@ -74,21 +69,20 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd){
     case -1 :
     case -3 :
       risp->op= OP_FAIL;
-      // free(dato->buf);
-      // free(dato);
+
       break;
     case -2 :
       risp->op= OP_PUT_ALREADY;
-      // free(dato->buf);
-      // free(dato);
+
       break;
   }
   sendReply( fd, risp);
   return 0;
 }
 
-int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t key,int fd){
-  message_data_t* dato= (message_data_t*) icl_hash_find( repository, key);
+int update_op(message_t* new_mex, icl_hash_t* repository, int fd){
+
+  message_data_t* dato = (message_data_t*) icl_hash_find( repository, new_mex->hdr.key);
   message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
   
   if(dato==NULL){
@@ -96,10 +90,14 @@ int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t
     sendReply( fd, risp);
     return 0;
   }
-  if (dato->len != len){
+  if (dato->len != new_mex->data.len){
     risp->op= OP_UPDATE_SIZE; 
   }else{
-    strcpy(dato->buf,buff);
+    // free(dato->buf);
+    // dato->buf=new_mex->data.buf;      //non sono sicuro al100% che sia la maniera corretta di farlo
+    strcpy(dato->buf,new_mex->data.buf);  // qui non va fatto così ma senno
+    // free(new_mex);
+
     risp->op= OP_OK;
   }
   sendReply( fd, risp);
@@ -109,6 +107,7 @@ int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t
 int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
 
   int op= icl_hash_delete( repository, key);
+  printf("-----------------------%d------------------\n",op );
    message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
   if (op==0){
     risp->op= OP_OK;
@@ -200,9 +199,9 @@ int gest_op(message_t * mex,long fd, icl_hash_t* repository){
             ris_op = put_op(mex, repository, fd);
             break;
 
-      // case UPDATE_OP:
-      //          ris_op =  update_op(mex.data.buf, mex.data.len, repository, mex.hdr.key,fd);
-      //       break;
+      case UPDATE_OP:
+               ris_op =  update_op(mex, repository, fd);
+            break;
 
       case REMOVE_OP:
                 ris_op = remove_op(repository, mex->hdr.key,fd);

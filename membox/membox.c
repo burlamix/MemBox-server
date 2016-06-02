@@ -159,7 +159,7 @@ void* worker(){
 		while(read_fd(fd,dati))// e poi ci infiliamo una read
 		{	
 
-			printf("\n i=%d, worker esegue una richiesta di %d del client su fd = %d \n",i,dati->hdr.op,fd);	fflush(stdout);
+			printf("\n i=%d, worker esegue una richiesta di %d del client su fd = %d, ",i,dati->hdr.op,fd);	fflush(stdout);
 			
 
 			//controlla che la repository non sia bloccata da una operazione LOCK
@@ -176,13 +176,15 @@ void* worker(){
 			//viene eseguita l'operazione richiesta
 			ec_meno1_c(ris_op = gest_op(dati,fd, repository), "operazione non identificata", free(dati->data.buf);break);
 
+			printf(" risultato dell op=%d\n",ris_op);
+
 			Pthread_mutex_lock(&(repository->lk_job_c));
 				repository->job_c--;
 				//nel caso in cui non ci siano più lavori in esecuzione allora viene attivata la lock
 				if(repository->job_c==0) 
 					Pthread_cond_signal(&(repository->cond_job));//nel caso nessuno abbia chiesto la lock la signal andrà persa
 			Pthread_mutex_unlock(&(repository->lk_job_c));
-	
+			i++;
 		}	
 		Pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);
