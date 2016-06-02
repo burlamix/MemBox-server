@@ -39,7 +39,7 @@ int SizeOfRep( icl_hash_t* repo){
 int put_op(message_t* new_data,  icl_hash_t* repository,  int fd){
   
   message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
-  int newdim= SizeOfRep(repository) + (sizeof(char)*new_data->data.len) + sizeof(unsigned int);
+  int newdim= SizeOfRep(repository) + (new_data->data.len) + sizeof(unsigned int);
   //si verifica che la repository non abbia raggiunto il massimo numero di elementi
   if ( repository->StorageSize!=0 && repository->nentries >= repository->StorageSize){
     risp->op= OP_PUT_TOOMANY;
@@ -133,7 +133,7 @@ int get_op(icl_hash_t* repository, membox_key_t key,int fd){
     }
     sendReply(fd, risp);
     write(fd, &(dato->len ),sizeof(int));
-    write(fd, dato->buf , dato->len * sizeof(char) );
+    write(fd, dato->buf , dato->len);
   return 0;
 }
 
