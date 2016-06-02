@@ -156,7 +156,7 @@ icl_hash_find(icl_hash_t *ht, unsigned long key){
  */
 
 int
-icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
+icl_hash_insert(icl_hash_t *ht, unsigned long key, char * buff, unsigned int len)
 {
     icl_entry_t *curr;
     unsigned int hash_val;
@@ -174,12 +174,19 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
     /* if key was not found */
     curr = (icl_entry_t*)malloc(sizeof(icl_entry_t));
     if(!curr) return -1;
+    curr->data= malloc(sizeof(message_data_t));
+    if(!curr->data) return -1;
+    curr->data->len=len;
+    curr->data->buf=malloc(len*sizeof(char));
+    strcpy(curr->data->buf, buff);
 
     curr->key = key;
-    curr->data = data;
     curr->next = ht->buckets[hash_val]; /* add at start */
     ht->buckets[hash_val] = curr;
     ht->nentries++;
+
+    int i=icl_hash_dump(stdout, ht);
+    fflush(stdout);
 
     return 0;
 
@@ -279,10 +286,10 @@ icl_hash_dump(FILE* stream, icl_hash_t* ht)
 
     for(i=0; i<ht->nbuckets; i++) {
         bucket = ht->buckets[i];
-        for(curr=bucket; curr!=NULL; ) {
+        for(curr=bucket; curr!=NULL;curr=curr->next ) {
             if(curr->key)
                 fprintf(stream, "icl_hash_dump: %ld: %d %s\n", curr->key, curr->data->len, curr->data->buf);
-            curr=curr->next;
+                fflush(stream);
         }
     }
 

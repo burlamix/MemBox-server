@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <ops.h>
 #include <message.h>
@@ -56,7 +57,7 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
   dato->buf= malloc(sizeof(char)*len);
 
   dato->len=len;
-  dato->buf=buff;
+  strcpy(dato->buf,buff);
 
   if (repository->MaxObjSize!=0 && sizeof(dato)> repository->MaxObjSize){
     // free(dato->buf);
@@ -65,7 +66,7 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
     sendReply( fd, risp);
     return 0;
   }
-  op=icl_hash_insert( repository, key, dato);
+  op=icl_hash_insert( repository, key, buff, len);
   switch (op){
     case 0 :
       risp->op= OP_OK;
@@ -98,7 +99,7 @@ int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t
   if (dato->len != len){
     risp->op= OP_UPDATE_SIZE; 
   }else{
-    dato->buf=buff;
+    strcpy(dato->buf,buff);
     risp->op= OP_OK;
   }
   sendReply( fd, risp);
@@ -118,13 +119,12 @@ int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
 }
 int get_op(icl_hash_t* repository, membox_key_t key,int fd){
 
-    message_data_t* dato = calloc(1,sizeof(message_data_t));
-    dato->buf = calloc(1,sizeof(char));
+    message_data_t* dato;
 
     dato= (message_data_t*) icl_hash_find( repository, key);
 
     message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
-    
+    risp->key=key;
     if (dato==NULL){
       risp->op=OP_GET_NONE;
     }else{

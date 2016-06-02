@@ -61,7 +61,7 @@ message_data_t *
 icl_hash_find(icl_hash_t *, unsigned long );
 
 int
- icl_hash_insert(icl_hash_t *, unsigned long, message_data_t*);
+ icl_hash_insert(icl_hash_t *, unsigned long, char * buff, unsigned int len);
 
 
 int
