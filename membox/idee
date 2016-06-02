@@ -1,0 +1,37 @@
+
+DISPATCHER
+.
+.
+//Creazione socket
+.
+.
+while(true){
+// maxConnection indica il massimo numero di connessioni
+// accepted indica il numero di connessioni richieste
+// lostsignal indica il numero di signal perse quando tutti i thread del poll sono in esecuzione 
+
+if((maxConnection- accepted)>0) //posso acccettare una nuova connessione
+.
+.
+//idea è quella di creare una coda dove inserire i vare fd restituiti dalle accept
+//in modo che i thread del pool non attivi possano prendere direttamente il fd
+.
+.
+//I thread che quando vengono creati sono messi in attesa su una variabile di
+ condizione cond vengono risvegliati
+
+if( thrad in attesa >0)
+	if( thread in attesa > lostsignal)
+		.
+		//eseguo tante signal quante sono quelle perse, 
+		lostsignal=0
+		:
+	else 	:
+		//eseguo tante signal quanti sono i thread in attesa
+		lostsignal-=thread in attesa
+else lostsignal++;
+
+
+altra idee: 2 code una per i thread attivi, e una per i thread in attesa;
+		
+
