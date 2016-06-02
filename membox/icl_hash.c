@@ -135,7 +135,7 @@ icl_hash_find(icl_hash_t *ht, unsigned long key){
 
     if(!ht ) return NULL;
    
-    hash_val= hash_pjw((void*)key)% ht->nbuckets;
+    hash_val= hash_pjw((void*)&key)% ht->nbuckets;
 
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
         if ( curr->key==key)
@@ -164,7 +164,7 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, char * buff, unsigned int len
     if(!ht) return -3;
 
    
-    hash_val=hash_pjw((void*)key)% ht->nbuckets;
+    hash_val=hash_pjw((void*)&key)% ht->nbuckets;
 
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next){
         if ( curr->key==key)
@@ -209,7 +209,7 @@ int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
     unsigned int hash_val;
     if(!ht ) return -1;
 
-    hash_val=hash_pjw((void*)key)% ht->nbuckets;
+    hash_val=hash_pjw((void*)&key)% ht->nbuckets;
 
     prev= NULL;
     for(curr=ht->buckets[hash_val]; curr !=NULL;curr=curr->next){
