@@ -36,18 +36,18 @@ int SizeOfRep( icl_hash_t* repo){
 
 
 int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t key,int fd){
-   message_hdr_t risp;
+   message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
   int newdim= SizeOfRep(repository) + (sizeof(char)*len) + sizeof(unsigned int);
   //si verifica che la repository non abbia raggiunto il massimo numero di elementi
   if ( repository->StorageSize!=0 && repository->nentries >= repository->StorageSize){
-    risp.op= OP_PUT_TOOMANY;
-    sendReply( fd, &risp);
+    risp->op= OP_PUT_TOOMANY;
+    sendReply( fd, risp);
     return 0;
   }
   //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
   if(repository->StorageByteSize!=0 && newdim>= repository->StorageByteSize){
-    risp.op= OP_PUT_REPOSIZE;
-    sendReply( fd, &risp);
+    risp->op= OP_PUT_REPOSIZE;
+    sendReply( fd, risp);
     return 0;
   } 
 
@@ -61,84 +61,91 @@ int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t ke
   if (repository->MaxObjSize!=0 && sizeof(dato)> repository->MaxObjSize){
     // free(dato->buf);
     // free(dato);
-    risp.op= OP_PUT_SIZE;
-    sendReply( fd, &risp);
+    risp->op= OP_PUT_SIZE;
+    sendReply( fd, risp);
     return 0;
   }
   op=icl_hash_insert( repository, key, dato);
   switch (op){
     case 0 :
-      risp.op= OP_OK;
+      risp->op= OP_OK;
       break;
     case -1 :
     case -3 :
-      risp.op= OP_FAIL;
+      risp->op= OP_FAIL;
       // free(dato->buf);
       // free(dato);
       break;
     case -2 :
-      risp.op= OP_PUT_ALREADY;
+      risp->op= OP_PUT_ALREADY;
       // free(dato->buf);
       // free(dato);
       break;
   }
-  sendReply( fd, &risp);
+  sendReply( fd, risp);
   return 0;
 }
 
 int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t key,int fd){
   message_data_t* dato= (message_data_t*) icl_hash_find( repository, key);
-  message_hdr_t risp;
+  message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
   
   if(dato==NULL){
-    risp.op= OP_UPDATE_NONE;
-    sendReply( fd, &risp);
+    risp->op= OP_UPDATE_NONE;
+    sendReply( fd, risp);
     return 0;
   }
   if (dato->len != len){
-    risp.op= OP_UPDATE_SIZE; 
+    risp->op= OP_UPDATE_SIZE; 
   }else{
     dato->buf=buff;
-    risp.op= OP_OK;
+    risp->op= OP_OK;
   }
-  sendReply( fd, &risp);
+  sendReply( fd, risp);
   return 0;
 }
 
 int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
   int op= icl_hash_delete( repository, key);
-   message_hdr_t risp;
+   message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
   if (op){
-    risp.op= OP_OK;
+    risp->op= OP_OK;
   }else{
-    risp.op=OP_REMOVE_NONE;
+    risp->op=OP_REMOVE_NONE;
   }
-    sendReply( fd, &risp);
+    sendReply( fd, risp);
   return 0;
 }
 int get_op(icl_hash_t* repository, membox_key_t key,int fd){
-    message_data_t* dato= (message_data_t*) icl_hash_find( repository, key);
-    message_hdr_t risp;
+
+    message_data_t* dato = calloc(1,sizeof(message_data_t));
+    dato->buf = calloc(1,sizeof(char));
+
+    dato= (message_data_t*) icl_hash_find( repository, key);
+
+    message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
+    
     if (dato==NULL){
-      risp.op=OP_GET_NONE;
+      risp->op=OP_GET_NONE;
     }else{
-      risp.op=OP_OK;
+      risp->op=OP_OK;
     }
-    sendReply(fd, &risp);
+    sendReply(fd, risp);
     write(fd, &(dato->len ),sizeof(int));
-  write(fd, dato->buf , dato->len * sizeof(char) );
+    write(fd, dato->buf , dato->len * sizeof(char) );
   return 0;
 }
 
 int lock_op(int fd,icl_hash_t* repository){
-    
+  
+  message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
+
   pthread_mutex_lock(& repository->lk_repo);
   if(repository->repo_l){//caso in cui la lock è già presa
       pthread_mutex_unlock(& repository->lk_repo);
 
-      message_hdr_t risp_hdr;
-      risp_hdr.op = OP_LOCKED;
-      sendReply( fd, &risp_hdr);
+      risp->op = OP_LOCKED;
+      sendReply( fd, risp);
 
   }else{
     repository->repo_l=1;
@@ -150,14 +157,16 @@ int lock_op(int fd,icl_hash_t* repository){
     }
     pthread_mutex_unlock(& repository->lk_job_c);
 
-    message_hdr_t risp_hdr;
-    risp_hdr.op = OP_OK;
-    sendReply( fd , &risp_hdr);
+    risp->op = OP_OK;
+    sendReply( fd , risp);
   }
   return 0;
 }
 
 int unlock_op(int fd, icl_hash_t* repository){
+
+  message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
+
 
     pthread_mutex_lock(& repository->lk_repo);
     if(repository->repo_l && fd== repository->fd){//caso in cui la lock è stata presa
@@ -165,18 +174,14 @@ int unlock_op(int fd, icl_hash_t* repository){
         pthread_cond_broadcast(&(repository->cond_repo));
         pthread_mutex_unlock(&(repository->lk_repo));
 
-
-
-        message_hdr_t risp_hdr;
-        risp_hdr.op = OP_OK;
-        sendReply(fd,&risp_hdr);
+        risp->op = OP_OK;
+        sendReply(fd,risp);
 
     }else{//caso in cui la lock non è già stata presa
         pthread_mutex_unlock(& repository->lk_repo);
 
-        message_hdr_t risp_hdr;
-        risp_hdr.op = OP_LOCK_NONE;
-        sendReply(fd,&risp_hdr);
+        risp->op = OP_LOCK_NONE;
+        sendReply(fd,risp);
     }
   return 0;
 }
@@ -219,6 +224,4 @@ int gest_op(message_t mex,long fd, icl_hash_t* repository){
 
   return ris_op;     
 }
-
-
-
+  
