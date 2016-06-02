@@ -63,7 +63,6 @@ hash_pjw(void* key)
 
 void freedata(message_data_t* aus) {
   free(aus->buf);
-  free(aus);
 }
 
 
@@ -156,7 +155,7 @@ icl_hash_find(icl_hash_t *ht, unsigned long key){
  */
 
 int
-icl_hash_insert(icl_hash_t *ht, unsigned long key, char * buff, unsigned int len)
+icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
 {
     icl_entry_t *curr;
     unsigned int hash_val;
@@ -174,18 +173,17 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, char * buff, unsigned int len
     /* if key was not found */
     curr = (icl_entry_t*)malloc(sizeof(icl_entry_t));
     if(!curr) return -1;
-    curr->data= malloc(sizeof(message_data_t));
-    if(!curr->data) return -1;
-    curr->data->len=len;
-    curr->data->buf=malloc(len*sizeof(char));
-    strcpy(curr->data->buf, buff);
 
     curr->key = key;
+    curr->data = data;
     curr->next = ht->buckets[hash_val]; /* add at start */
     ht->buckets[hash_val] = curr;
     ht->nentries++;
 
-    int i=icl_hash_dump(stdout, ht);
+printf("\n-----------------------------dump----------------------------------\n");
+    icl_hash_dump(stdout, ht);
+printf("\n------------------------------------------------------------------\n");
+    
     fflush(stdout);
 
     return 0;

@@ -36,37 +36,37 @@ int SizeOfRep( icl_hash_t* repo){
 }
 
 
-int put_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t key,int fd){
-   message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
-  int newdim= SizeOfRep(repository) + (sizeof(char)*len) + sizeof(unsigned int);
-  //si verifica che la repository non abbia raggiunto il massimo numero di elementi
-  if ( repository->StorageSize!=0 && repository->nentries >= repository->StorageSize){
-    risp->op= OP_PUT_TOOMANY;
-    sendReply( fd, risp);
-    return 0;
-  }
-  //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
-  if(repository->StorageByteSize!=0 && newdim>= repository->StorageByteSize){
-    risp->op= OP_PUT_REPOSIZE;
-    sendReply( fd, risp);
-    return 0;
-  } 
+int put_op(message_t* new_data,  icl_hash_t* repository,  int fd){
+  
+  message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
+  // int newdim= SizeOfRep(repository) + (sizeof(char)*len) + sizeof(unsigned int);
+  // //si verifica che la repository non abbia raggiunto il massimo numero di elementi
+  // if ( repository->StorageSize!=0 && repository->nentries >= repository->StorageSize){
+  //   risp->op= OP_PUT_TOOMANY;
+  //   sendReply( fd, risp);
+  //   return 0;
+  // }
+  // //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
+  // if(repository->StorageByteSize!=0 && newdim>= repository->StorageByteSize){
+  //   risp->op= OP_PUT_REPOSIZE;
+  //   sendReply( fd, risp);
+  //   return 0;
+  // } 
 
   int op;
-  message_data_t* dato= malloc(sizeof(message_data_t));
-  dato->buf= malloc(sizeof(char)*len);
+  // message_data_t* dato= calloc(1,sizeof(message_data_t));
+  // dato->buf= malloc(sizeof(char)*len);
+  // dato->len=len;
+  // strcpy(dato->buf,buff);
 
-  dato->len=len;
-  strcpy(dato->buf,buff);
-
-  if (repository->MaxObjSize!=0 && sizeof(dato)> repository->MaxObjSize){
-    // free(dato->buf);
-    // free(dato);
-    risp->op= OP_PUT_SIZE;
-    sendReply( fd, risp);
-    return 0;
-  }
-  op=icl_hash_insert( repository, key, buff, len);
+  // if (repository->MaxObjSize!=0 && sizeof(dato)> repository->MaxObjSize){
+  //   // free(dato->buf);
+  //   // free(dato);
+  //   risp->op= OP_PUT_SIZE;
+  //   sendReply( fd, risp);
+  //   return 0;
+  // }
+  op=icl_hash_insert( repository, new_data->hdr.key, &new_data->data);
   switch (op){
     case 0 :
       risp->op= OP_OK;
@@ -107,9 +107,10 @@ int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t
 }
 
 int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
+
   int op= icl_hash_delete( repository, key);
    message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
-  if (op){
+  if (op==OP_OK){
     risp->op= OP_OK;
   }else{
     risp->op=OP_REMOVE_NONE;
@@ -117,6 +118,7 @@ int remove_op(icl_hash_t* repository, membox_key_t key,int fd){
     sendReply( fd, risp);
   return 0;
 }
+
 int get_op(icl_hash_t* repository, membox_key_t key,int fd){
 
     message_data_t* dato;
@@ -188,35 +190,35 @@ int unlock_op(int fd, icl_hash_t* repository){
 
 
 
-int gest_op(message_t mex,long fd, icl_hash_t* repository){
+int gest_op(message_t * mex,long fd, icl_hash_t* repository){
 
    int ris_op;
 
-  switch (mex.hdr.op) {
+  switch (mex->hdr.op) {
 
       case PUT_OP:
-            ris_op = put_op(mex.data.buf, mex.data.len,repository, mex.hdr.key,fd);
+            ris_op = put_op(mex, repository, fd);
             break;
 
-      case UPDATE_OP:
-               ris_op =  update_op(mex.data.buf, mex.data.len, repository, mex.hdr.key,fd);
-            break;
+      // case UPDATE_OP:
+      //          ris_op =  update_op(mex.data.buf, mex.data.len, repository, mex.hdr.key,fd);
+      //       break;
 
-       case REMOVE_OP:
-               ris_op = remove_op(repository, mex.hdr.key,fd);
-               break;
+      case REMOVE_OP:
+                ris_op = remove_op(repository, mex->hdr.key,fd);
+                break;
             
       case GET_OP:
-               ris_op = get_op( repository, mex.hdr.key,fd);
-            break;
+                ris_op = get_op( repository, mex->hdr.key, fd);
+                break;
 
-      case LOCK_OP:
-            ris_op = lock_op(fd, repository);
-            break;
+      // case LOCK_OP:
+      //       ris_op = lock_op(fd, repository);
+      //       break;
 
-      case UNLOCK_OP:
-            ris_op = unlock_op(fd,repository);
-            break;
+      // case UNLOCK_OP:
+      //       ris_op = unlock_op(fd,repository);
+      //       break;
       default:
         fprintf(stderr, "Invalid request\n");
         return -1;

@@ -5,9 +5,9 @@
 
 int sendReply(long fd, message_hdr_t *hdr);
 
-int gest_op(message_t mex,long fd, icl_hash_t* repository);
+int gest_op(message_t* mex,long fd, icl_hash_t* repository);
 
-int put_op(char * buff, unsigned int len, icl_hash_t* repository, membox_key_t key,long fd);
+int put_op(message_t*, icl_hash_t* repository,long fd);
 
 int update_op(char * buff, unsigned int len,icl_hash_t* repository, membox_key_t key,long fd);
 

@@ -109,13 +109,13 @@ test1:
 	make all
 	valgrind ./membox -f DATA/membox.conf1&
 	./client -l $(UNIX_PATH) -c 0:0:8192
-	./client -l $(UNIX_PATH) -c 0:1:8192
+#	./client -l $(UNIX_PATH) -c 0:1:8192
 	./client -l $(UNIX_PATH) -c 0:2:0
 	./client -l $(UNIX_PATH) -c 0:3:0
-	./client -l $(UNIX_PATH) -c 0:0:1048576
-	./client -l $(UNIX_PATH) -c 0:2:0
-	./client -l $(UNIX_PATH) -c 0:0:1048576; test $$? -eq 243
-	./client -l $(UNIX_PATH) -c 0:3:0
+#	./client -l $(UNIX_PATH) -c 0:0:1048576
+#	./client -l $(UNIX_PATH) -c 0:2:0
+#	./client -l $(UNIX_PATH) -c 0:0:1048576; test $$? -eq 243
+#	./client -l $(UNIX_PATH) -c 0:3:0
 	killall -USR2 -w membox
 	@echo "********** Test1 superato!"
 

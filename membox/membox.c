@@ -128,7 +128,7 @@ int read_fd (int fd,message_t* dati){
 
 	return 1;
 }
-
+//dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
 void* worker(){
 
 	printf("\n WORKER PARTITO \n");fflush(stdout); //da eliminare
@@ -137,7 +137,7 @@ void* worker(){
 	int fd;
 	int i;
 	int ris_op;
-	message_t dati;
+	message_t *dati =calloc(1,sizeof(message_t));
 
 	while(1){
 	Pthread_mutex_lock(&lk_conn);
@@ -156,10 +156,10 @@ void* worker(){
 		printf(" l'fd della nuova connessione è %d\n",fd);	fflush(stdout);
 		
 		i=0;
-		while(read_fd(fd,&dati))// e poi ci infiliamo una read
+		while(read_fd(fd,dati))// e poi ci infiliamo una read
 		{	
 
-			printf("\n i=%d, worker esegue una richiesta di %d del client su fd = %d \n",i,dati.hdr.op,fd);	fflush(stdout);
+			printf("\n i=%d, worker esegue una richiesta di %d del client su fd = %d \n",i,dati->hdr.op,fd);	fflush(stdout);
 			
 
 			//controlla che la repository non sia bloccata da una operazione LOCK
@@ -174,9 +174,8 @@ void* worker(){
 			Pthread_mutex_unlock(&(repository->lk_repo));
 
 			//viene eseguita l'operazione richiesta
-			ec_meno1_c(ris_op = gest_op(dati,fd, repository), "operazione non identificata", free(dati.data.buf);break);
+			ec_meno1_c(ris_op = gest_op(dati,fd, repository), "operazione non identificata", free(dati->data.buf);break);
 
-			free(dati.data.buf);
 			Pthread_mutex_lock(&(repository->lk_job_c));
 				repository->job_c--;
 				//nel caso in cui non ci siano più lavori in esecuzione allora viene attivata la lock
