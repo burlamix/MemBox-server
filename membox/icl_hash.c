@@ -110,6 +110,7 @@ icl_hash_create( int nbuckets, int ss, int sbs, int mos){
         ht->buckets[i] = NULL;
         pthread_cond_init(&(ht->lkline[i].cond_line),NULL);
         pthread_mutex_init(&(ht->lkline[i].mutex_line),NULL);
+        ht->lkline[i].c=-1;
     }
     return ht;
         
@@ -130,17 +131,31 @@ icl_hash_create( int nbuckets, int ss, int sbs, int mos){
 message_data_t *
 icl_hash_find(icl_hash_t *ht, unsigned long key){
     icl_entry_t* curr;
+    message_data_t* aus;
     unsigned int hash_val;
 
     if(!ht ) return NULL;
    
     hash_val= hash_pjw((void*)&key)% ht->nbuckets;
 
+    Pthread_mutex_lock(&ht->lkline[hash_val].mutex_line);
+    while(ht->lkline[hash_val].c!=-1){
+            Pthread_cond_wait(&ht->lkline[hash_val].cond_line,&ht->lkline[hash_val].mutex_line);
+    }
+    ht->lkline[hash_val].c=1;
+    Pthread_mutex_unlock(&ht->lkline[hash_val].mutex_line);
+
+    aus=NULL;
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
         if ( curr->key==key)
-            return(curr->data);
+            aus=curr->data;
 
-    return NULL;
+    Pthread_mutex_lock(&ht->lkline[hash_val].mutex_line);
+    ht->lkline[hash_val].c=-1;
+    Pthread_cond_signal(&ht->lkline[hash_val].cond_line);
+    Pthread_mutex_unlock(&ht->lkline[hash_val].mutex_line);
+
+    return aus;
 
 }
 
@@ -159,31 +174,47 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
 {
     icl_entry_t *curr;
     unsigned int hash_val;
+    int aus=0;
 
     if(!ht) return -3;
 
    
     hash_val=hash_pjw((void*)&key)% ht->nbuckets;
 
+    printf("prima attesa insert\n");
+            fflush(stdout);
+
+    Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
+    
+    while(ht->lkline[hash_val].c!=-1){
+            pthread_cond_wait(&(ht->lkline[hash_val].cond_line),&(ht->lkline[hash_val].mutex_line));
+    }
+    ht->lkline[hash_val].c=1;
+    Pthread_mutex_unlock(&(ht->lkline[hash_val].mutex_line));
+
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next){
         if ( curr->key==key)
-            return(-2); /* key already exists */
+            aus=-2; /* key already exists */
     }
 
     /* if key was not found */
-    curr = (icl_entry_t*)malloc(sizeof(icl_entry_t));
-    if(!curr) return -1;
+    if(aus!=-2){
+        curr = (icl_entry_t*)malloc(sizeof(icl_entry_t));
+        if(!curr) aus=-1;
+            if(aus!=-1){
+                curr->key = key;
+                curr->data = data;
+                curr->next = ht->buckets[hash_val]; /* add at start */
+                ht->buckets[hash_val] = curr;
+                ht->nentries++;
+            }
+    }
+    Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
+    ht->lkline[hash_val].c=-1;
+    Pthread_cond_signal(&(ht->lkline[hash_val].cond_line));
+    Pthread_mutex_unlock(&(ht->lkline[hash_val].mutex_line));
 
-    curr->key = key;
-    curr->data = data;
-    curr->next = ht->buckets[hash_val]; /* add at start */
-    ht->buckets[hash_val] = curr;
-    ht->nentries++;
-
-   
-    fflush(stdout);
-
-    return 0;
+    return aus;
 
 }
 
@@ -196,16 +227,25 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
  * @param free_key -- pointer to function that frees the key
  * @param free_data -- pointer to function that frees the data
  *
- * @returns 0 on success, -1 on failure.
+ * @returns len of data on success, -1 on failure.
  */
 
 int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
     icl_entry_t *curr, *prev;
     unsigned int hash_val;
+    int aus;
     if(!ht ) return -1;
 
     hash_val=hash_pjw((void*)&key)% ht->nbuckets;
 
+    Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
+     while(ht->lkline[hash_val].c!=-1){
+            Pthread_cond_wait(&(ht->lkline[hash_val].cond_line),&(ht->lkline[hash_val].mutex_line));
+    }
+    ht->lkline[hash_val].c=1;
+    Pthread_mutex_unlock(&(ht->lkline[hash_val].mutex_line));
+
+    aus=-1;
     prev= NULL;
     for(curr=ht->buckets[hash_val]; curr !=NULL;curr=curr->next){
         if(curr->key==key){
@@ -215,14 +255,21 @@ int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
                 prev->next=curr->next;
             }
             ht->nentries--; //ci sarà da mettere in mutua escusione??
+            aus=curr->data->len;
             freedata(curr->data);
             free(curr);
-            return 0;
 
         }
         prev= curr;
     }
-    return -1;
+
+    Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
+    ht->lkline[hash_val].c=-1;
+    Pthread_cond_signal(&(ht->lkline[hash_val].cond_line));
+    Pthread_mutex_unlock(&(ht->lkline[hash_val].mutex_line));
+
+
+    return aus;
 }
 
 

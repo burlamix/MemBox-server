@@ -146,6 +146,7 @@ void* worker(){
 		job=coda_conn->testa_attesa;
 		fd=coda_conn->testa_attesa->info;
 		coda_conn->testa_attesa=coda_conn->testa_attesa->next;
+		mboxStats.concurrent_connections++;
 		Pthread_mutex_unlock(&lk_conn);
 		printf(" l'fd della nuova connessione è %d\n",fd);	fflush(stdout);
 		
@@ -175,8 +176,8 @@ void* worker(){
 			Pthread_mutex_unlock(&(repository->lk_repo));
 
 			//viene eseguita l'operazione richiesta
-			ec_meno1_c(ris_op = gest_op(dati,fd, repository), "operazione non identificata", free(dati->data.buf);break);
-
+			ec_meno1_c(ris_op = gest_op(dati,fd, repository, &mboxStats, lk_stat), "operazione non identificata", free(dati->data.buf);break);
+			printStats(stdout);
 			printf(" risultato dell op=%d\n",ris_op);
 
 			Pthread_mutex_lock(&(repository->lk_job_c));
@@ -189,6 +190,7 @@ void* worker(){
 		}	
 		Pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);
+		mboxStats.concurrent_connections--;
 		Pthread_mutex_unlock(&lk_conn);
 		
 		//printf("\n-----------------------------dump----------------------------------\n");
@@ -220,6 +222,7 @@ void* sig_handler(){
 				FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
 				printStats(aus);
 				fclose(aus);
+				break;
 			}
 		}
 		if(sig==SIGUSR2){

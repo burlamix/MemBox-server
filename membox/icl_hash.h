@@ -21,6 +21,7 @@ extern "C" {
 typedef struct {
     pthread_cond_t cond_line;
     pthread_mutex_t mutex_line;
+    int c;
 } icl_entry_lk;
 
 typedef struct icl_entry_s {
