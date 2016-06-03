@@ -29,6 +29,10 @@
 #include <op.h>
 #include <parse.h>
 #include <err_man.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 
 #define TRUE 1
@@ -205,11 +209,49 @@ void* worker(){
 	}		
 }
 
+void* sig_handler(){
+	printf("arrivo qui!\n");
+	sigset_t set;
+	int sig;
+	sigemptyset(&set);
+	sigaddset(&set,SIGTERM);
+	sigaddset(&set,SIGQUIT);
+	sigaddset(&set,SIGINT);
+	sigaddset(&set,SIGUSR1);
+	sigaddset(&set,SIGUSR2);
+	pthread_sigmask(SIG_UNBLOCK,&set,NULL);
+	while(TRUE){
+		sigwait(&set,&sig);
+		printf(" SEGNALE:%d",sig);
+		if(sig==SIGUSR1){
+			if (v_configurazione.StatFileName!=NULL){
+				FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
+				printStats(aus);
+				fclose(aus);
+			}
+		}
+		if(sig==SIGUSR2){
+		}
+	}
+
+}
+
+
+
 
 int main(int argc, char *argv[]) {
-
+	sigset_t set;
+	struct sigaction sa;
+	/*maschero tutto i segnali*/
+	ec_meno1_np(sigfillset(&set), exit(EXIT_FAILURE));
+	ec_meno1_np(pthread_sigmask(SIG_SETMASK, &set,NULL),exit(EXIT_FAILURE));
+	
+	pthread_t handler;
 	pthread_t *threadinpool;
 	pthread_t disp;
+	
+	pthread_create(&handler,NULL,sig_handler,NULL);
+
 	coda_conn=initcoda();
 
 	parse(argv[2], &v_configurazione);
