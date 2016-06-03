@@ -219,7 +219,7 @@ void* sig_handler(){
 	sigaddset(&set,SIGINT);
 	sigaddset(&set,SIGUSR1);
 	sigaddset(&set,SIGUSR2);
-	pthread_sigmask(SIG_UNBLOCK,&set,NULL);
+	pthread_sigmask(SIG_SETMASK,&set,NULL);
 	while(TRUE){
 		sigwait(&set,&sig);
 		printf(" SEGNALE:%d",sig);
@@ -243,8 +243,16 @@ int main(int argc, char *argv[]) {
 	sigset_t set;
 	struct sigaction sa;
 	/*maschero tutto i segnali*/
-	ec_meno1_np(sigfillset(&set), exit(EXIT_FAILURE));
-	ec_meno1_np(pthread_sigmask(SIG_SETMASK, &set,NULL),exit(EXIT_FAILURE));
+	//ec_meno1_np(sigfillset(&set), exit(EXIT_FAILURE));
+	//ec_meno1_np(pthread_sigmask(SIG_SETMASK, &set,NULL),exit(EXIT_FAILURE));
+	
+	sigemptyset(&set);
+	sigaddset(&set,SIGTERM);
+	sigaddset(&set,SIGQUIT);
+	sigaddset(&set,SIGINT);
+	sigaddset(&set,SIGUSR1);
+	sigaddset(&set,SIGUSR2);
+	pthread_sigmask(SIG_SETMASK,&set,NULL);
 	
 	pthread_t handler;
 	pthread_t *threadinpool;
