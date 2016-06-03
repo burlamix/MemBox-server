@@ -83,24 +83,19 @@ int readData(long fd, message_data_t *data){					// da notare i valori di ritorn
 
 	if (read(fd, &(data->len) ,sizeof(int))==0 ) return 0;
 
-	char* buffer = malloc(data->len);
-	char* aus = malloc(S_MEX_S);
+	data->buf =malloc(data->len);
+	char *aus = data->buf;
 
-	int r;
-	int i=0;
+	int letti=0;
+	int da_leggere=data->len;
 
-	while(i*S_MEX_S < data->len){
+	while(da_leggere>0){
 		
-		r =	read(fd, aus ,S_MEX_S);
-		if(r==0) return 0;
-		// printf("********%d************read legge %d\n",i,r );
-
-		memcpy(buffer + i*S_MEX_S, aus ,S_MEX_S); 
-		i++;
+		letti = read(fd, aus ,da_leggere);
+		// printf("\nletti----->%d<--\n",letti );
+		aus = aus +letti;
+		da_leggere=da_leggere-letti;
 	}
-
-	data->buf = buffer;
-	free(aus);
 	return 1;
 }
 
@@ -126,18 +121,20 @@ int sendRequest(long fd, message_t *msg){							//possibilità di migliorare il 
 	if(msg->hdr.op == PUT_OP || msg->hdr.op == UPDATE_OP ){
 		
 		write(fd, &((msg->data).len ),sizeof(int));
-		char* aus = malloc(S_MEX_S);
-		int i=0,r;
+		char * aus;
+		aus= msg->data.buf ;
 
-		while(i*S_MEX_S < msg->data.len){
+		int scritti = 0;
+		int da_scrivere = msg->data.len;
 
-			memcpy(aus, msg->data.buf + i*S_MEX_S, S_MEX_S);
-			r=write(fd, aus , S_MEX_S );
+		while(da_scrivere>0){
+			scritti=write(fd, aus , da_scrivere );
 
+			// printf("\nscrivo----->%d<--\n",scritti );
+			aus=aus+scritti-1;
+			da_scrivere=da_scrivere-scritti;
 			// printf("********%d************write scrive%d\n",i,r );
-			i++;
 		}
-		free(aus);
 	}
 	return 0;
 }
