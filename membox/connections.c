@@ -13,6 +13,8 @@
 #include <string.h>
 
 #include <stdlib.h>
+
+#define S_MEX_S 4096
 /**
  * @file  connection.h
  * @brief Contiene le funzioni che implementano il protocollo 
@@ -77,38 +79,28 @@ int readHeader(long fd, message_hdr_t *hdr){
  *
  * @return 0 in caso di successo -1 in caso di errore
  */
-int readData(long fd, message_data_t *data){
-	if (read(fd, &(data->len) ,sizeof(int))==0 ) return 0;
-//-------------------------
-	// data->buf = malloc((data->len));
-	// int r;
-	// r=read(fd, data->buf ,(data->len) );
-	// if(r==0) return 0;
-	// printf("********************read legge %d\n",r );
-//-------------------------------
+int readData(long fd, message_data_t *data){					// da notare i valori di ritorno chiesti nel header della funzione questa e delle altre
 
-	data->buf = malloc(data->len);
-	printf("\n|||||||||||||||||||||||||||||| %d  ||||||||||||||||||||||\n", data->buf);
+	if (read(fd, &(data->len) ,sizeof(int))==0 ) return 0;
+
+	char* buffer = malloc(data->len);
+	char* aus = malloc(S_MEX_S);
+
 	int r;
-	int letto=0;
 	int i=0;
 
-	while(letto < data->len){
+	while(i*S_MEX_S < data->len){
 		
-		char* aus = malloc(4096);
-		r =	read(fd, aus ,4096 );
-
+		r =	read(fd, aus ,S_MEX_S);
+		if(r==0) return 0;
 		// printf("********%d************read legge %d\n",i,r );
 
-		strcat(data->buf,aus);
-		free(aus);
-
-		letto = letto + 4096;
+		memcpy(buffer + i*S_MEX_S, aus ,S_MEX_S); 
 		i++;
 	}
-    printf("\n?????????????????????????????????????  %d  ???????????????????????????????\n\n", data->buf);
 
-
+	data->buf = buffer;
+	free(aus);
 	return 1;
 }
 
@@ -127,12 +119,25 @@ int readData(long fd, message_data_t *data){
  *
  * @return 0 in caso di successo -1 in caso di errore
  */
-int sendRequest(long fd, message_t *msg){
+int sendRequest(long fd, message_t *msg){							//possibilità di migliorare il protocollo mandando messaggi di dimenzione variabile e calcolarsi quanto si è letto e quanto manca da leggere
+
 	write(fd, &msg->hdr ,sizeof(message_hdr_t));
 
 	if(msg->hdr.op == PUT_OP || msg->hdr.op == UPDATE_OP ){
+		
 		write(fd, &((msg->data).len ),sizeof(int));
-		write(fd, (msg->data).buf , ((msg->data).len)  );
+		char* aus = malloc(S_MEX_S);
+		int i=0,r;
+
+		while(i*S_MEX_S < msg->data.len){
+
+			memcpy(aus, msg->data.buf + i*S_MEX_S, S_MEX_S);
+			r=write(fd, aus , S_MEX_S );
+
+			// printf("********%d************write scrive%d\n",i,r );
+			i++;
+		}
+		free(aus);
 	}
 	return 0;
 }
