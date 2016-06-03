@@ -49,21 +49,28 @@ nodo* insert_incoda(nodo*n,int c){
 }
 
 //restituisce il puntatore al nodo successivo
-nodo* delete (nodo* n){
+int delete (nodo* n){
 	if(n!=NULL){
 		nodo* aus;
+		if(n->prec==NULL && n->next==NULL){
+			//free(n);
+			return 0;
+		}
 		if(n->prec!=NULL && n->next!=NULL){
 			aus=n->next;
 			aus->prec=n->prec;
 			n->prec->next=aus;
 		}else{
 			if(n->prec==NULL)
-				aus=n->next;
-			else aus=NULL;
+				n->next->prec=NULL;
+			else n->prec->next=NULL;
 		}
-		free(n);
-		return aus;
-	}else return NULL;
+		printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nBOOOOM\n");
+		fflush(stdout);
+		//free(n);
+		return 0;
+	}
+	return -1;
 }
 
 //prende in ingresso la testa della lista e cancella tutta la lista
@@ -72,7 +79,7 @@ void delete_all(nodo* n){
 	if(n!=NULL){
 		nodo* aus=n->next;
 		n->next=NULL;
-		free(n);
+		//free(n);
 		delete_all(aus);
 	}
 
@@ -82,15 +89,13 @@ void delete_all(nodo* n){
 void delete_fd(coda_fd* c,nodo * n){
 	if( n== c->testa_attesa){
 		c->testa_attesa=n->next;
+		printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nBOOOOM\n");
 	}
 	if(n->next== NULL && c->coda==n){
 		c->coda=n->prec;
 	}
-	if(n!=NULL && n->prec ==NULL){
-		c->testa=delete(n);
-	}else{
-		n->prec->next=delete(n);
-	}
+	delete(n);
+	
 	c->lenght--;
 }
 
@@ -107,3 +112,6 @@ void add_fd( coda_fd* c, int fd){
 	}
 	
 }
+
+
+

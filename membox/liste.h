@@ -22,7 +22,7 @@ nodo* insert_intesta( nodo* n, int c );
 nodo* insert_incoda(nodo*n,int c);
 
 //restituisce il puntatore al nodo successivo
-nodo* delete (nodo* n);
+int delete (nodo* n);
 
 //prende in ingresso la testa della lista e cancella tutta la lista
 void delete_all(nodo* n);

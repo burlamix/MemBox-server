@@ -57,6 +57,7 @@ icl_hash_t * repository;
 pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
 
+pthread_mutex_t lk_stat = PTHREAD_MUTEX_INITIALIZER;
 
 
 //_____________________________________________________________________________cose da finire___________________________________________________________
@@ -119,18 +120,7 @@ void *dispatcher()
 	pthread_exit((void *) 0);
 	
 }
-// momentaneamente l'ho messa qui, dove altro si può mettere sennò?
-int read_fd (int fd,message_t* dati){
-	
-	//il worker legge il messaggio 
-	if (read(fd, &dati->hdr ,sizeof(message_hdr_t)) == 0)  return 0; 		// qui è dove c'ho perso più di un ora
 
-	ec_meno1_c(read(fd, &dati->data.len ,sizeof(int)),"errore lettura dati messaggio", NULL);
-	ec_null_c(dati->data.buf = malloc(sizeof(char)*dati->data.len),"errore allocazione dato", NULL);
-	read(fd, dati->data.buf ,dati->data.len *sizeof(char));	
-	// printf("\nla read ha letto %d\n", a);
-	return 1;
-}
 //dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
 void* worker(){
 
@@ -159,6 +149,7 @@ void* worker(){
 		Pthread_mutex_unlock(&lk_conn);
 		printf(" l'fd della nuova connessione è %d\n",fd);	fflush(stdout);
 		
+
 		i=0;
 		a=1;
 		while(readHeader(fd, &dati->hdr) && a)// e poi ci infiliamo una read
@@ -168,7 +159,7 @@ void* worker(){
 			}else{
 					printf("********************read non legge! \n" );
 			}
-
+					
 			printf("i=%d, worker esegue una richiesta di %d del client su fd = %d, ",i,dati->hdr.op,fd);	fflush(stdout);
 			
 
@@ -200,9 +191,9 @@ void* worker(){
 		delete_fd(coda_conn, job);
 		Pthread_mutex_unlock(&lk_conn);
 		
-		printf("\n-----------------------------dump----------------------------------\n");
-  	 	 icl_hash_dump(stdout, repository);
-		printf("\n------------------------------------------------------------------\n");
+		//printf("\n-----------------------------dump----------------------------------\n");
+  	 	 //icl_hash_dump(stdout, repository);
+		//printf("\n------------------------------------------------------------------\n");
  
 		printf("\n_____________________________________________fine___________________________________________________________\n\n");	fflush(stdout);
 
@@ -210,7 +201,7 @@ void* worker(){
 }
 
 void* sig_handler(){
-	printf("arrivo qui!\n");
+	printf("arrivo qui!\n");fflush(stdout);
 	sigset_t set;
 	int sig;
 	sigemptyset(&set);
@@ -220,9 +211,10 @@ void* sig_handler(){
 	sigaddset(&set,SIGUSR1);
 	sigaddset(&set,SIGUSR2);
 	pthread_sigmask(SIG_SETMASK,&set,NULL);
+	printf("ARRIVO QUI!\n");fflush(stdout);
 	while(TRUE){
 		sigwait(&set,&sig);
-		printf(" SEGNALE:%d",sig);
+		printf(" SEGNALE:%d",sig);fflush(stdout);
 		if(sig==SIGUSR1){
 			if (v_configurazione.StatFileName!=NULL){
 				FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
@@ -231,6 +223,7 @@ void* sig_handler(){
 			}
 		}
 		if(sig==SIGUSR2){
+
 		}
 	}
 
@@ -241,11 +234,11 @@ void* sig_handler(){
 
 int main(int argc, char *argv[]) {
 	sigset_t set;
-	struct sigaction sa;
+	
 	/*maschero tutto i segnali*/
 	//ec_meno1_np(sigfillset(&set), exit(EXIT_FAILURE));
 	//ec_meno1_np(pthread_sigmask(SIG_SETMASK, &set,NULL),exit(EXIT_FAILURE));
-	
+
 	sigemptyset(&set);
 	sigaddset(&set,SIGTERM);
 	sigaddset(&set,SIGQUIT);
@@ -253,6 +246,7 @@ int main(int argc, char *argv[]) {
 	sigaddset(&set,SIGUSR1);
 	sigaddset(&set,SIGUSR2);
 	pthread_sigmask(SIG_SETMASK,&set,NULL);
+
 	
 	pthread_t handler;
 	pthread_t *threadinpool;
