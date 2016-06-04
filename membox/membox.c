@@ -63,6 +63,10 @@ pthread_mutex_t lk_stat = PTHREAD_MUTEX_INITIALIZER;
 //_____________________________________________________________________________cose da finire___________________________________________________________
 
 var_conf v_configurazione;
+//variabile e_flag che serve per sincronizzare sig_handler con tutti gli altri thread
+volatile sig_atomic_t e_flag = 0;
+//il fd della socket come variabile globale perchè è necessario bloccarla quando arriva segnale sigusr2
+int fd_skt;
 
 //________________________________________________________________________________________________________________________________________
 
@@ -75,7 +79,7 @@ void *dispatcher()
 {
 	printf("\n DISPATCHER PARTITO \n");fflush(stdout);// da eliminare
 
-	int fd_skt, fd_c;
+	int fd_c;
 	struct sockaddr_un sa;
 
 
@@ -89,6 +93,12 @@ void *dispatcher()
 	ec_meno1_ex(listen(fd_skt,SOMAXCONN),"impossibile accettare connessioni");
 
 	while(TRUE){
+			//verifico se è arrivato un segnale;
+			if(e_flag!=0){
+				printf("%d nel dispatcher-------------------------------------\n\n\n",e_flag);
+				fflush(stdout);
+				break;
+			}
 			Pthread_mutex_lock(&lk_conn);
 			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ //si possono ancora accettare connessioni
 				Pthread_mutex_unlock(&lk_conn);
@@ -115,6 +125,16 @@ void *dispatcher()
 	ec_meno1_ex(close(fd_skt),"impossibile chiudere socket");
 	ec_meno1_ex(unlink(SOCKNAME),"errore di unlink");
 
+	//sveglio tutti i worker che sono in attesa sulla coda delle connessioni
+	//altrimenti si bloccano tutti e non verranno riattivati più dato che le connessioni da prendere sono finite;
+	Pthread_mutex_lock(&lk_conn);
+	pthread_cond_broadcast(&cond_nuovolavoro);
+	Pthread_mutex_unlock(&lk_conn);
+
+
+	printf("-----il dispatcher muore-----\n");
+	fflush(stdout);
+
 	pthread_exit((void *) 0);
 	
 }
@@ -131,7 +151,7 @@ void* worker(){
 
 	while(1){
 	Pthread_mutex_lock(&lk_conn);
-		while(coda_conn->testa_attesa==NULL){//verifica la presenza di nuovi lavori
+		while(coda_conn->testa_attesa==NULL && e_flag==0){//verifica la presenza di nuovi lavori
 			printf("testa attesa è nulla -> il worker si sospende\n");	fflush(stdout);
 
 			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
@@ -141,6 +161,11 @@ void* worker(){
 		printf("\nworker si sveglia e procede a prendere una nuova connessione,");	fflush(stdout);
 		// fare con una funzione
 		job=coda_conn->testa_attesa;
+		//se job==NULL vuol dire che sono uscito dal ciclo per volatile e le connessioni sono finite quindi esco dal while;
+		if(e_flag!=0 && job==NULL){
+			Pthread_mutex_unlock(&lk_conn);
+			break;
+		}
 		fd=coda_conn->testa_attesa->info;
 		coda_conn->testa_attesa=coda_conn->testa_attesa->next;
 		mboxStats.concurrent_connections++;
@@ -204,11 +229,14 @@ void* worker(){
  
 		printf("\n_____________________________________________fine___________________________________________________________\n\n");	fflush(stdout);
 
-	}		
+	}
+	free(dati);
+	printf("-----il worker muore-----\n");
+	fflush(stdout);
+	pthread_exit((void *) 0);		
 }
 
 void* sig_handler(){
-	printf("arrivo qui!\n");fflush(stdout);
 	sigset_t set;
 	int sig;
 	sigemptyset(&set);
@@ -218,7 +246,6 @@ void* sig_handler(){
 	sigaddset(&set,SIGUSR1);
 	sigaddset(&set,SIGUSR2);
 	pthread_sigmask(SIG_SETMASK,&set,NULL);
-	printf("ARRIVO QUI!\n");fflush(stdout);
 	while(TRUE){
 		sigwait(&set,&sig);
 		printf(" SEGNALE:%d",sig);fflush(stdout);
@@ -227,13 +254,37 @@ void* sig_handler(){
 				FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
 				printStats(aus);
 				fclose(aus);
+				sig=-1;
+			}
+		}else{
+			if(sig==SIGUSR2){
+				e_flag=1;
+				shutdown(fd_skt,SHUT_RDWR);
+				printf("%d -------------------------------------\n\n\n",e_flag);
+				fflush(stdout);
+				sleep(5);
+				printf("-----handler si sveglia e elimina tutto----\n");
+				fflush(stdout);
+				
+				if (v_configurazione.StatFileName!=NULL){
+					FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
+					printStats(aus);
+					fclose(aus);
+				}
+				
+				icl_hash_destroy(repository);
+				//la coda delle connessioni dovrebbe essere vuota;
+				free(coda_conn);
 				break;
+
+			}else{
+				//da gestire gli altri segnali che ammazzano tutto indistinatamente
 			}
 		}
-		if(sig==SIGUSR2){
-
-		}
 	}
+	printf("-----handler si chiude----\n");
+	fflush(stdout);
+	pthread_exit((void *) 0);
 
 }
 
@@ -275,6 +326,8 @@ int main(int argc, char *argv[]) {
 	}
 	
 	pthread_join(disp,NULL);
+	pthread_join(handler,NULL);
+	printf("main termina\n");
 
 
     return 0;
