@@ -192,7 +192,6 @@ int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *
 }
 
 int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ){
-  
   message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
 
   pthread_mutex_lock(& repository->lk_repo);
@@ -208,12 +207,17 @@ int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthrea
 
   }else{
     repository->repo_l=1;
+    repository->fd = fd;
     pthread_mutex_unlock(& repository->lk_repo);
 
     pthread_mutex_lock(&(repository->lk_job_c));
-    while(repository->job_c>0){
+    while(repository->job_c>1){
+      printf("\nvalore di job =%d\n",repository->job_c);
+
       pthread_cond_wait(&(repository->cond_job), &(repository->lk_job_c));
     }
+      printf("\nvalore di job =%d\n",repository->job_c);
+
     pthread_mutex_unlock(& repository->lk_job_c);
 
     risp->op = OP_OK;
@@ -231,14 +235,13 @@ int unlock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats, pth
 
 
     pthread_mutex_lock(& repository->lk_repo);
-    if(repository->repo_l && fd== repository->fd){//caso in cui la lock è stata presa
+    if(repository->repo_l && fd == repository->fd){//caso in cui la lock è stata presa in maniera corretta
         repository->repo_l=0;
-        pthread_cond_broadcast(&(repository->cond_repo));
         pthread_mutex_unlock(&(repository->lk_repo));
 
         risp->op = OP_OK;
         sendReply(fd,risp);
-    }else{//caso in cui la lock non è già stata presa
+    }else{//caso in cui la lock non è già stata presa o è stata presa da qualcunaltro
         pthread_mutex_unlock(& repository->lk_repo);
 
         risp->op = OP_LOCK_NONE;
@@ -271,13 +274,13 @@ int gest_op(message_t * mex,long fd, icl_hash_t* repository, struct statistics  
                 ris_op = get_op( repository, mex->hdr.key, fd, mboxStats, lk_stat );
                 break;
 
-      // case LOCK_OP:
-      //       ris_op = lock_op(fd, repository);
-      //       break;
+      case LOCK_OP:
+            ris_op = lock_op(fd, repository, mboxStats, lk_stat );
+            break;
 
-      // case UNLOCK_OP:
-      //       ris_op = unlock_op(fd,repository);
-      //       break;
+      case UNLOCK_OP:
+            ris_op = unlock_op(fd,repository, mboxStats, lk_stat );
+            break;
       default:
         fprintf(stderr, "Invalid request\n");
         return -1;

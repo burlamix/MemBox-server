@@ -55,16 +55,14 @@ icl_hash_t * repository;
 //_________________________________________________________________________________________________variabili_di _codizione_______________________________________
 //variabili di mutua esclusione e di condizione per l'accesso alla coda dei fd relativi al socket
 pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
+
 pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t lk_stat = PTHREAD_MUTEX_INITIALIZER;
 
-
 //_____________________________________________________________________________cose da finire___________________________________________________________
 
-
 var_conf v_configurazione;
-
 
 //________________________________________________________________________________________________________________________________________
 
@@ -121,7 +119,6 @@ void *dispatcher()
 	
 }
 
-//dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
 void* worker(){
 
 	printf("\n WORKER PARTITO \n");fflush(stdout); //da eliminare
@@ -158,7 +155,7 @@ void* worker(){
 			if(dati->hdr.op == PUT_OP || dati->hdr.op == UPDATE_OP ){
 				a=readData(fd,&dati->data);
 			}else{
-					printf("********************read non legge! \n" );
+				printf("********************read non legge! \n" );
 			}
 					
 			printf("i=%d, worker esegue una richiesta di %d del client su fd = %d, ",i,dati->hdr.op,fd);	fflush(stdout);
@@ -166,27 +163,35 @@ void* worker(){
 
 			//controlla che la repository non sia bloccata da una operazione LOCK
 			Pthread_mutex_lock(&(repository->lk_repo));
-				while(repository->repo_l == 1){
-					Pthread_cond_wait(&(repository->cond_repo),&(repository->lk_repo));
-				}
-			//se la repository non è bloccata viene incrementato il valore che identifica il numero di operazioni in esecuzione sulla repository
-			Pthread_mutex_lock(&(repository->lk_job_c));
-				repository->job_c++;							// !!!*!*!!! questo non va messo subito dopo il while sopra?
-			Pthread_mutex_unlock(&repository->lk_job_c);
-			Pthread_mutex_unlock(&(repository->lk_repo));
+				if(repository->repo_l == 0 || repository->fd == fd){
+				
+				//se la repository non è bloccata viene incrementato il valore che identifica il numero di operazioni in esecuzione sulla repository
+				Pthread_mutex_lock(&(repository->lk_job_c));
+					repository->job_c++;							
+				Pthread_mutex_unlock(&repository->lk_job_c);
+				Pthread_mutex_unlock(&(repository->lk_repo));
 
-			//viene eseguita l'operazione richiesta
-			ec_meno1_c(ris_op = gest_op(dati,fd, repository, &mboxStats, lk_stat), "operazione non identificata", free(dati->data.buf);break);
-			printStats(stdout);
-			printf(" risultato dell op=%d\n",ris_op);
+				//viene eseguita l'operazione richiesta
+				ec_meno1_c(ris_op = gest_op(dati,fd, repository, &mboxStats, lk_stat), "operazione non identificata", free(dati->data.buf);break);
+				printStats(stdout);
+				printf(" risultato dell op=%d\n",ris_op);
 
-			Pthread_mutex_lock(&(repository->lk_job_c));
-				repository->job_c--;
-				//nel caso in cui non ci siano più lavori in esecuzione allora viene attivata la lock
-				if(repository->job_c==0) 
-					Pthread_cond_signal(&(repository->cond_job));//nel caso nessuno abbia chiesto la lock la signal andrà persa
-			Pthread_mutex_unlock(&(repository->lk_job_c));
-			i++;
+				Pthread_mutex_lock(&(repository->lk_job_c));
+					repository->job_c--;
+
+					//nel caso in cui non ci siano più lavori in esecuzione allora viene attivata la lock
+					if(repository->job_c==0) 
+						Pthread_cond_signal(&(repository->cond_job));//nel caso nessuno abbia chiesto la lock la signal andrà persa
+				Pthread_mutex_unlock(&(repository->lk_job_c));
+				i++;
+			}else{
+
+				Pthread_mutex_unlock(&(repository->lk_repo));
+ 				message_hdr_t *risp=malloc(sizeof(message_hdr_t));
+				risp->op = OP_LOCKED;
+       			sendReply(fd,risp);
+
+			}
 		}	
 		Pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);

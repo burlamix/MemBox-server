@@ -93,7 +93,6 @@ icl_hash_create( int nbuckets, int ss, int sbs, int mos){
     ht->repo_l=0;
     ht->fd=-1;
     //gestione errore
-    pthread_cond_init(&ht->cond_repo,NULL);
     
     pthread_mutex_init(&ht->lk_job_c, NULL);
     ht->job_c=0;
@@ -330,7 +329,7 @@ icl_hash_dump(FILE* stream, icl_hash_t* ht)
         bucket = ht->buckets[i];
         for(curr=bucket; curr!=NULL;curr=curr->next ) {
             if(curr->key>=0)
-                fprintf(stream, "icl_hash_dump: %ld: %d %d\n", curr->key, curr->data->len, (char*)curr->data->buf);
+                fprintf(stream, "icl_hash_dump: %ld: %d %s\n", curr->key, curr->data->len, (char*)curr->data->buf);
                 fflush(stream);
         }
     }

@@ -40,7 +40,6 @@ typedef struct icl_hash_s {
     pthread_mutex_t lk_repo;
     int repo_l;
     int fd;// fd della connessione che ha rischiesto la LOCK, -1 come default
-    pthread_cond_t cond_repo;
     //per conoscere quanti job stanno lavorando sulla repository:
     pthread_mutex_t lk_job_c;
     int job_c;

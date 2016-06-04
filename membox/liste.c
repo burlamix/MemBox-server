@@ -53,7 +53,7 @@ int delete (nodo* n){
 	if(n!=NULL){
 		nodo* aus;
 		if(n->prec==NULL && n->next==NULL){
-			//free(n);
+			free(n);
 			return 0;
 		}
 		if(n->prec!=NULL && n->next!=NULL){
@@ -65,9 +65,8 @@ int delete (nodo* n){
 				n->next->prec=NULL;
 			else n->prec->next=NULL;
 		}
-		printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nBOOOOM\n");
 		fflush(stdout);
-		//free(n);
+		free(n);
 		return 0;
 	}
 	return -1;
@@ -79,7 +78,7 @@ void delete_all(nodo* n){
 	if(n!=NULL){
 		nodo* aus=n->next;
 		n->next=NULL;
-		//free(n);
+		free(n);
 		delete_all(aus);
 	}
 
