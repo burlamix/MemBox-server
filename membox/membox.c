@@ -63,8 +63,9 @@ pthread_mutex_t lk_stat = PTHREAD_MUTEX_INITIALIZER;
 //_____________________________________________________________________________cose da finire___________________________________________________________
 
 var_conf v_configurazione;
-//variabile e_flag che serve per sincronizzare sig_handler con tutti gli altri thread
+//variabili e_flag che servono per sincronizzare sig_handler con tutti gli altri thread
 volatile sig_atomic_t e_flag = 0;
+volatile sig_atomic_t i_flag = 0;
 //il fd della socket come variabile globale perchè è necessario bloccarla quando arriva segnale sigusr2
 int fd_skt;
 
@@ -92,13 +93,13 @@ void *dispatcher()
 	ec_meno1_ex(bind( fd_skt , (struct sockaddr *) &sa , sizeof(sa) ), "impossibile assegnare indirizzo a socket");
 	ec_meno1_ex(listen(fd_skt,SOMAXCONN),"impossibile accettare connessioni");
 
-	while(TRUE){
+	while(e_flag==0 && i_flag==0){
 			//verifico se è arrivato un segnale;
-			if(e_flag!=0){
-				printf("%d nel dispatcher-------------------------------------\n\n\n",e_flag);
-				fflush(stdout);
-				break;
-			}
+			//if(e_flag!=0){
+				//printf("%d nel dispatcher-------------------------------------\n\n\n",e_flag);
+				//fflush(stdout);
+				//break;
+			//}
 			Pthread_mutex_lock(&lk_conn);
 			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ //si possono ancora accettare connessioni
 				Pthread_mutex_unlock(&lk_conn);
@@ -149,9 +150,9 @@ void* worker(){
 	int ris_op;
 	message_t *dati =calloc(1,sizeof(message_t));
 
-	while(1){
+	while(i_flag==0){
 	Pthread_mutex_lock(&lk_conn);
-		while(coda_conn->testa_attesa==NULL && e_flag==0){//verifica la presenza di nuovi lavori
+		while(coda_conn->testa_attesa==NULL && e_flag==0 && i_flag==0){//verifica la presenza di nuovi lavori
 			printf("testa attesa è nulla -> il worker si sospende\n");	fflush(stdout);
 
 			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
@@ -162,7 +163,7 @@ void* worker(){
 		// fare con una funzione
 		job=coda_conn->testa_attesa;
 		//se job==NULL vuol dire che sono uscito dal ciclo per volatile e le connessioni sono finite quindi esco dal while;
-		if(e_flag!=0 && job==NULL){
+		if((e_flag!=0 && job==NULL) || i_flag!=0){
 			Pthread_mutex_unlock(&lk_conn);
 			break;
 		}
@@ -174,8 +175,7 @@ void* worker(){
 		
 
 		i=0;
-		a=1;
-		while(readHeader(fd, &dati->hdr) && a)// e poi ci infiliamo una read
+		while(readHeader(fd, &dati->hdr) && i_flag==0)// e poi ci infiliamo una read
 		{	
 			if(dati->hdr.op == PUT_OP || dati->hdr.op == UPDATE_OP ){
 				a=readData(fd,&dati->data);
@@ -238,7 +238,7 @@ void* worker(){
 
 void* sig_handler(){
 	sigset_t set;
-	int sig;
+	int sig, aus_sig;
 	sigemptyset(&set);
 	sigaddset(&set,SIGTERM);
 	sigaddset(&set,SIGQUIT);
@@ -246,20 +246,21 @@ void* sig_handler(){
 	sigaddset(&set,SIGUSR1);
 	sigaddset(&set,SIGUSR2);
 	pthread_sigmask(SIG_SETMASK,&set,NULL);
-	while(TRUE){
+	aus_sig=1;
+	while(aus_sig){
 		sigwait(&set,&sig);
 		printf(" SEGNALE:%d",sig);fflush(stdout);
-		if(sig==SIGUSR1){
-			if (v_configurazione.StatFileName!=NULL){
-				FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
-				printStats(aus);
-				fclose(aus);
-				sig=-1;
-			}
-		}else{
-			if(sig==SIGUSR2){
+		switch (sig) {
+			case SIGUSR1:
+				if (v_configurazione.StatFileName!=NULL){
+					FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
+					printStats(aus);
+					fclose(aus);
+				}
+			break;
+			case SIGUSR2:
 				e_flag=1;
-				shutdown(fd_skt,SHUT_RDWR);
+				shutdown(fd_skt,SHUT_RDWR); //andrea quarta ha detto che non va bene
 				printf("%d -------------------------------------\n\n\n",e_flag);
 				fflush(stdout);
 				sleep(5);
@@ -275,11 +276,14 @@ void* sig_handler(){
 				icl_hash_destroy(repository);
 				//la coda delle connessioni dovrebbe essere vuota;
 				free(coda_conn);
+				aus_sig=0;
 				break;
-
-			}else{
-				//da gestire gli altri segnali che ammazzano tutto indistinatamente
-			}
+			default:
+				i_flag=1;
+				shutdown(fd_skt,SHUT_RDWR);
+				aus_sig=0;
+	
+			
 		}
 	}
 	printf("-----handler si chiude----\n");
@@ -299,6 +303,7 @@ int main(int argc, char *argv[]) {
 	//ec_meno1_np(pthread_sigmask(SIG_SETMASK, &set,NULL),exit(EXIT_FAILURE));
 
 	sigemptyset(&set);
+	sigaddset(&set,SIGTERM);
 	sigaddset(&set,SIGTERM);
 	sigaddset(&set,SIGQUIT);
 	sigaddset(&set,SIGINT);
