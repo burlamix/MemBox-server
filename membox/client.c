@@ -6,7 +6,7 @@
  * 
  */
 /**
- * @file client1.c
+ * @file client.c
  * @brief Semplice client di test. 
  *
  *        Esempio di utilizzo:
@@ -176,7 +176,7 @@ static int execute_op(int connfd, operation_t *o) {
 }
 
 int main(int argc, char *argv[]) {
-    const char optstring[] = "s:l:c:s:h";
+    const char optstring[] = "l:c:s:h";
     int optc;
     char *spath = NULL;
     operation_t *ops = NULL;

@@ -58,8 +58,10 @@ Makefile
 		       : file per il make. Il Makefile va modificato solo nelle
 		         parti indicate.
   
-DATI/*		       : file di dati necessari per i tests
-                          (NON MODIFICARE)  
+DATI/*		       : file di dati necessari per i tests. Da non modificare
+		         se non per le opzioni UnixPath e StatFileName (vedere anche
+			 i commenti nel Makefile).
+                         (NON MODIFICARE)  
   
 README.txt	       : questo file  
 README.doxygen	       : informazioni sul dformato doxygen dei commenti 

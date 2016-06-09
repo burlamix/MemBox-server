@@ -2,6 +2,7 @@
 #define MEMBOX_STATS_
 
 #include <stdio.h>
+#include <time.h>
 
 /**
  *  @struct statistics
@@ -18,7 +19,7 @@ struct statistics {
     unsigned long nremove_failed;               // n. di remove fallite
     unsigned long nlock;                        // n. di lock
     unsigned long nlock_failed;                 // n. di lock fallite
-    unsigned long concurrent_connections;      /// n. di connessioni concorrenti
+    unsigned long concurrent_connections;       // n. di connessioni concorrenti
     unsigned long current_size;                 // size attuale del repository (bytes)
     unsigned long max_size;                     // massima size raggiunta dal repository
     unsigned long current_objects;              // numero corrente di oggetti

@@ -10,7 +10,7 @@ killall -USR1 membox
 sleep 1
 read put putfailed <<< $(tail -1 $2 | cut -d\  -f 3,4 )
 
-if [[ $put != 1000 && $putfailed != 500 ]]; then 
+if [[ $put != 1000 || $putfailed != 500 ]]; then 
     echo "Test fallito"
     exit 1
 fi
