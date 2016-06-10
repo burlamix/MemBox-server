@@ -257,6 +257,7 @@ int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
             aus=curr->data->len;
             freedata(curr->data);
             free(curr);
+            break;
 
         }
         prev= curr;

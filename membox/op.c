@@ -46,7 +46,7 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
   Pthread_mutex_unlock(&lk_stat);
 
   //si verifica che la repository non abbia raggiunto il massimo numero di elementi
-  if ( repository->StorageSize!=0 && curr_obj >= repository->StorageSize){
+  if ( repository->StorageSize!=0 && curr_obj > repository->StorageSize){
     risp->op= OP_PUT_TOOMANY;
     sendReply( fd, risp);
     Pthread_mutex_lock(&lk_stat);
@@ -55,7 +55,7 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
     return 0;
   }
   //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
-  if(repository->StorageByteSize!=0 && newdim>= repository->StorageByteSize){
+  if(repository->StorageByteSize!=0 && newdim> repository->StorageByteSize){
     risp->op= OP_PUT_REPOSIZE;
     sendReply( fd, risp);
     Pthread_mutex_lock(&lk_stat);
@@ -66,7 +66,7 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
 
   int op;
 
-  if (repository->MaxObjSize!=0 && new_data->data.len >repository->MaxObjSize){
+  if (repository->MaxObjSize!=0 && new_data->data.len > repository->MaxObjSize){
     risp->op= OP_PUT_SIZE;
     sendReply( fd, risp);
     Pthread_mutex_lock(&lk_stat);
