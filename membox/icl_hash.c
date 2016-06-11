@@ -145,9 +145,12 @@ icl_hash_find(icl_hash_t *ht, unsigned long key){
     Pthread_mutex_unlock(&ht->lkline[hash_val].mutex_line);
 
     aus=NULL;
-    for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
-        if ( curr->key==key)
+    for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next){
+        if ( curr->key==key){
             aus=curr->data;
+            break;
+        }
+    }
 
     Pthread_mutex_lock(&ht->lkline[hash_val].mutex_line);
     ht->lkline[hash_val].c=-1;
@@ -255,7 +258,10 @@ int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
             }
             ht->nentries--; //ci sarà da mettere in mutua escusione??
             aus=curr->data->len;
-            freedata(curr->data);
+            //freedata(curr->data);
+            //free(curr->data->buf);
+            //free(curr->data);
+            free(curr->data->buf);
             free(curr);
             break;
 

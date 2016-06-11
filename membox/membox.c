@@ -148,7 +148,7 @@ void* worker(){
 	int fd;
 	int i,a;
 	int ris_op;
-	message_t *dati =calloc(1,sizeof(message_t));
+	message_t *dati =malloc(sizeof(message_t));
 
 	while(i_flag==0){
 	Pthread_mutex_lock(&lk_conn);
@@ -200,6 +200,11 @@ void* worker(){
 				ec_meno1_c(ris_op = gest_op(dati,fd, repository, &mboxStats, lk_stat), "operazione non identificata", free(dati->data.buf);break);
 				printStats(stdout);
 				printf(" risultato dell op=%d\n",ris_op);
+				//posso liberare il buffer che verrà riallocato nuovamente alla prossima readData
+				if(dati->hdr.op == PUT_OP || dati->hdr.op == UPDATE_OP ){
+					free(dati->data.buf);
+			}	
+					
 
 				Pthread_mutex_lock(&(repository->lk_job_c));
 					repository->job_c--;

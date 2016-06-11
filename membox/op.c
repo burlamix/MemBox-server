@@ -39,6 +39,7 @@ int SizeOfRep( icl_hash_t* repo){
 int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statistics *mboxStats, pthread_mutex_t lk_stat ){
   
   message_hdr_t *risp=calloc(1,sizeof(message_hdr_t));
+  message_data_t *obj=calloc(1,sizeof(message_data_t));
   Pthread_mutex_lock(&lk_stat);
   mboxStats->nput++;
   int newdim= mboxStats->current_size + (new_data->data.len);
@@ -74,8 +75,10 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
     Pthread_mutex_unlock(&lk_stat);
     return 0;
   }
-
-  op=icl_hash_insert( repository, new_data->hdr.key, &new_data->data);
+  obj->len=new_data->data.len;
+  obj->buf=(char*)malloc(obj->len);
+  strcpy(obj->buf,new_data->data.buf);
+  op=icl_hash_insert( repository, new_data->hdr.key, obj);
   switch (op){
     case 0 :
       risp->op= OP_OK;
@@ -129,7 +132,7 @@ int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statist
   }else{
     // free(dato->buf);
     // dato->buf=new_mex->data.buf;      //non sono sicuro al100% che sia la maniera corretta di farlo
-    strcpy(dato->buf,new_mex->data.buf);  // qui non va fatto così ma senno
+    memcpy((void*)dato->buf,(void*)new_mex->data.buf,dato->len);  // qui non va fatto così ma senno
     // free(new_mex);
 
     risp->op= OP_OK;
@@ -186,7 +189,7 @@ int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *
 
     }
     sendReply(fd, risp);
-    write(fd, &(dato->len ),sizeof(int));
+    write(fd, &(dato->len ),sizeof(unsigned int));
     write(fd, dato->buf , dato->len);
   return 0;
 }
