@@ -115,7 +115,7 @@ void *dispatcher()
 			}
 			else{// impossibile accettare nuove connessioni connessioni
 				Pthread_mutex_unlock(&lk_conn);
-				ec_meno1_c(fd_c=accept(fd_skt,NULL,0),"connessione fallita", break);
+				ec_meno1(fd_c=accept(fd_skt,NULL,0),"connessione fallita");
 				message_t fail;
 				fail.hdr.op = OP_FAIL; 			//da definire poi un apposito messaggio per il numero massimo di connessioni raggiunto
 				ec_meno1(sendRequest(fd_c, &fail),"impossibile inviare messaggio");  
@@ -262,7 +262,7 @@ void* sig_handler(){
 					printStats(aus);
 					fclose(aus);
 				}
-			break;
+				break;
 			case SIGUSR2:
 				e_flag=1;
 				shutdown(fd_skt,SHUT_RDWR); //andrea quarta ha detto che non va bene

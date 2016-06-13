@@ -47,7 +47,7 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
   Pthread_mutex_unlock(&lk_stat);
 
   //si verifica che la repository non abbia raggiunto il massimo numero di elementi
-  if ( repository->StorageSize!=0 && curr_obj > repository->StorageSize){
+  if ( repository->StorageSize!=0 && curr_obj >= repository->StorageSize){
     risp->op= OP_PUT_TOOMANY;
     sendReply( fd, risp);
     Pthread_mutex_lock(&lk_stat);
@@ -180,18 +180,34 @@ int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *
       	Pthread_mutex_lock(&lk_stat);
     	mboxStats->nget++;
     	mboxStats->nget_failed++;
-		Pthread_mutex_unlock(&lk_stat);
+		  Pthread_mutex_unlock(&lk_stat);
     }else{
     	risp->op=OP_OK;
     	Pthread_mutex_lock(&lk_stat);
     	mboxStats->nget++;
-		Pthread_mutex_unlock(&lk_stat);
+		  Pthread_mutex_unlock(&lk_stat);
 
     }
     sendReply(fd, risp);
-    write(fd, &(dato->len ),sizeof(unsigned int));
-    write(fd, dato->buf , dato->len);
-  return 0;
+
+    if(risp->op==OP_OK){
+      write(fd, &(dato->len ),sizeof(int));
+      char * aus;
+      aus= dato->buf ;
+      int scritti = 0;
+      int da_scrivere = dato->len;
+
+      while(da_scrivere>0){
+        scritti=write(fd, aus , da_scrivere );
+
+        // printf("\nscrivo----->%d<--\n",scritti );
+        aus=aus+scritti;
+        da_scrivere=da_scrivere-scritti;
+        // printf("********%d************write scrive%d\n",i,r );
+      }
+      //write(fd, dato->buf , dato->len);
+    }
+    return 0;
 }
 
 int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ){

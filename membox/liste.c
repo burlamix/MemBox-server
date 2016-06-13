@@ -93,6 +93,7 @@ void delete_fd(coda_fd* c,nodo * n){
 	if(n->next== NULL && c->coda==n){
 		c->coda=n->prec;
 	}
+	close(n->info);
 	delete(n);
 	
 	c->lenght--;
