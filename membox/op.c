@@ -77,7 +77,7 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
   }
   obj->len=new_data->data.len;
   obj->buf=(char*)malloc(obj->len);
-  strcpy(obj->buf,new_data->data.buf);
+  memcpy(obj->buf,new_data->data.buf, new_data->data.len); 
   op=icl_hash_insert( repository, new_data->hdr.key, obj);
   switch (op){
     case 0 :
