@@ -15,6 +15,7 @@ int MaxObjSize= 100;
 
 int sendReply(long fd, message_hdr_t *hdr){
   write(fd, hdr ,sizeof(message_hdr_t));
+  free(hdr);
   return 0;
 }
 
