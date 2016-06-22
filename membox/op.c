@@ -39,6 +39,7 @@ int SizeOfRep( icl_hash_t* repo){
 int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statistics *mboxStats, pthread_mutex_t lk_stat ){
   
   message_hdr_t risp;
+  memset(&risp, 0, sizeof(message_hdr_t));
   message_data_t *obj=calloc(1,sizeof(message_data_t));
   Pthread_mutex_lock(&lk_stat);
   mboxStats->nput++;
@@ -113,6 +114,7 @@ int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statist
 
   message_data_t* dato = (message_data_t*) icl_hash_find( repository, new_mex->hdr.key);
   message_hdr_t risp;
+  memset(&risp, 0, sizeof(message_hdr_t));
   
   if(dato==NULL){
     risp.op= OP_UPDATE_NONE;
@@ -148,7 +150,9 @@ int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statist
 int remove_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat){
 
   int op= icl_hash_delete( repository, key);
-   message_hdr_t risp;
+  message_hdr_t risp;
+  memset(&risp, 0, sizeof(message_hdr_t));
+
   if (op>=0){
   	risp.op= OP_OK;
     Pthread_mutex_lock(&lk_stat);
@@ -174,6 +178,8 @@ int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *
     dato= (message_data_t*) icl_hash_find( repository, key);
 
     message_hdr_t risp;
+    memset(&risp, 0, sizeof(message_hdr_t));
+
     risp.key=key;
     if (dato==NULL){
      	risp.op=OP_GET_NONE;
@@ -212,6 +218,7 @@ int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *
 
 int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ){
   message_hdr_t risp;
+  memset(&risp, 0, sizeof(message_hdr_t));
 
   pthread_mutex_lock(& repository->lk_repo);
   if(repository->repo_l){//caso in cui la lock è già presa
@@ -251,6 +258,7 @@ int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthrea
 int unlock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ){
 
   message_hdr_t risp;
+  memset(&risp, 0, sizeof(message_hdr_t));
 
 
     pthread_mutex_lock(& repository->lk_repo);

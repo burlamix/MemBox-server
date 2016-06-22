@@ -258,10 +258,8 @@ int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
             }
             ht->nentries--; //ci sarà da mettere in mutua escusione??
             aus=curr->data->len;
-            //freedata(curr->data);
-            //free(curr->data->buf);
-            //free(curr->data);
             free(curr->data->buf);
+            free(curr->data);
             free(curr);
             break;
 
@@ -302,7 +300,8 @@ icl_hash_destroy(icl_hash_t *ht)
         bucket = ht->buckets[i];
         for (curr=bucket; curr!=NULL; ) {
             next=curr->next;
-            freedata(curr->data);
+            free(curr->data->buf);
+            free(curr->data);
             free(curr);
             curr=next;
         }

@@ -285,7 +285,7 @@ void* sig_handler(){
 				aus_sig=0;
 				break;
 			}
-			default: {
+			default: { //forse è meglio specificare i casi dei diversi segnali
 				i_flag=1;
 				shutdown(fd_skt,SHUT_RDWR);
 				aus_sig=0;
