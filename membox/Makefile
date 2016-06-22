@@ -107,7 +107,7 @@ killmbox:
 test1: 
 	make cleanall
 	make all
-	valgrind ./membox -f DATA/membox.conf1&
+	./membox -f DATA/membox.conf1&
 	./client -l $(UNIX_PATH) -c 0:0:8192
 	./client -l $(UNIX_PATH) -c 0:1:8192
 	./client -l $(UNIX_PATH) -c 0:2:0
@@ -150,7 +150,7 @@ test5:
 	make cleanall
 	make all
 	./membox -f DATA/membox.conf1&
-	./teststats.sh $(UNIX_PATH)
+	./teststats.sh $(UNIX_PATH) $(STAT_PATH)
 	killall -USR2 -w membox
 	@echo "********** Test5 superato!"
 

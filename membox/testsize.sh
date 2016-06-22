@@ -10,17 +10,20 @@ MAX_CONNECTIONS=2
 
 ./client -l $1 -c 0:0:50000
 if [[ $((256-$?)) != $OP_PUT_SIZE ]]; then
+    echo "Errore 1---------------------"
     exit 1
 fi
 
 # inserisco 2 oggetti di size massima
 ./client -l $1 -c 0:0:32768 -c 1:0:32768
 if [[ $? != 0 ]]; then
+    echo "Errore 2----------------------"
     exit 1
 fi
 
 ./client -l $1 -c 2:0:1
 if [[ $((256-$?)) != $OP_PUT_REPOSIZE ]]; then
+    echo "Errore 3-----------------------"
     exit 1
 fi
 

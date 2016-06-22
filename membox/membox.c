@@ -256,14 +256,15 @@ void* sig_handler(){
 		sigwait(&set,&sig);
 		printf(" SEGNALE:%d",sig);fflush(stdout);
 		switch (sig) {
-			case SIGUSR1:
+			case SIGUSR1: {
 				if (v_configurazione.StatFileName!=NULL){
 					FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
 					printStats(aus);
 					fclose(aus);
 				}
 				break;
-			case SIGUSR2:
+			}
+			case SIGUSR2: {
 				e_flag=1;
 				shutdown(fd_skt,SHUT_RDWR); //andrea quarta ha detto che non va bene
 				printf("%d -------------------------------------\n\n\n",e_flag);
@@ -283,11 +284,12 @@ void* sig_handler(){
 				free(coda_conn);
 				aus_sig=0;
 				break;
-			default:
+			}
+			default: {
 				i_flag=1;
 				shutdown(fd_skt,SHUT_RDWR);
 				aus_sig=0;
-	
+			}
 			
 		}
 	}

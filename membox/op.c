@@ -77,7 +77,7 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
   }
   obj->len=new_data->data.len;
   obj->buf=(char*)malloc(obj->len);
-  memcpy(obj->buf,new_data->data.buf, new_data->data.len); 
+  memcpy(obj->buf,new_data->data.buf, new_data->data.len);
   op=icl_hash_insert( repository, new_data->hdr.key, obj);
   switch (op){
     case 0 :
@@ -201,7 +201,7 @@ int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *
         scritti=write(fd, aus , da_scrivere );
 
         // printf("\nscrivo----->%d<--\n",scritti );
-        aus=aus+scritti;
+        aus=aus+scritti-1;
         da_scrivere=da_scrivere-scritti;
         // printf("********%d************write scrive%d\n",i,r );
       }
