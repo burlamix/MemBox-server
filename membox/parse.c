@@ -63,6 +63,7 @@ int parse(char* path,var_conf* str_agg)
 		}
 		i++;
 	}
+	free(linea);
 	fclose(fd);		//gestione errori
 
   return 0;

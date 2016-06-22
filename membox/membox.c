@@ -335,6 +335,8 @@ int main(int argc, char *argv[]) {
 	pthread_create(&disp, NULL, dispatcher,NULL);
 	for(int i=0;i<v_configurazione.ThreadsInPool;i++){
 		pthread_create(&threadinpool[i],NULL,worker, NULL);
+		pthread_detach(threadinpool[i]);
+
 	}
 	
 	pthread_join(disp,NULL);
