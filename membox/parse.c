@@ -50,15 +50,20 @@ int parse(char* path,var_conf* str_agg)
 		if(linea[j]!='\n' && linea[j] != '#'){						//siamo in una riga che dovrebbe essere valida ovvero con un assegnazione di variabile
 
 			var1 = strtok (linea," = \t ");							// non so bene perche se lascio degli spazi dopo una variabile ritorna un valore su var che non è null..
+			
+  			if(var1==NULL) return -1; 
+
 			var1 = remove_n(var1);									// c'è da fare il controllo se c'è più di una stringa
   			var2 = strtok (NULL, " = \t ");
+
+  			if(var2==NULL) return -1; 
   			var2 = remove_n(var2);
+  			// if(strtok (NULL, " = \t ")!= NULL) {printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");}
   			// printf("1->%s<-\n", var1);
   			// printf("2->%s<-\n", var2);
 
 			if (assegna_var(var1,var2,str_agg) == -1) {
-				printf("\n!!	ATTENZIONE	!!il file di configuarazione non è formattato bene\n");
-				//file di configuarazione non valido come si gestisce?
+				return -1;
 			}
 		}
 		i++;

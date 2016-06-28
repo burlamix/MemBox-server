@@ -334,7 +334,17 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	parse(argv[2], &v_configurazione);
+	//nel caso il file di configurazione passato non sia corretto, si da la possibilità di inserire il percorso di un nuovo file.
+	char * path = malloc(sizeof(char));
+	path = argv[2];
+	int i=0;
+	//si itera per 5 volte provando ongi volta il file di configurazione
+	while( i<5 && parse(path, &v_configurazione) != 0 ){
+		printf("ATTENZIONE: il file di configurazione è considerato non valido, hai la possibilità di scrivere il path di un altro file \n");
+		scanf("%s",path);
+		i++;
+	}
+
 	threadinpool = malloc(v_configurazione.ThreadsInPool*(sizeof(pthread_t)));
 
 	repository = icl_hash_create( NB, v_configurazione.StorageSize, v_configurazione.StorageByteSize, v_configurazione.MaxObjSize);
