@@ -12,24 +12,83 @@ typedef struct coda_fd{
 	nodo* coda;
 }coda_fd;
 
-//inizializzazione di una coda_fd
+/**
+ * @function initcoda
+ * @brief alloca e inizializza una struttura coda_fd
+ *
+ * @return il puntatore alla struttura creata in caso di successo, ritorna NULL e setta errno in caso di errore
+ */
 coda_fd* initcoda();
 
-//restituisce il puntatore al nodo inserito prima del nodo passato come parametro
+/**
+ * @function insert_intesta
+ * @brief crea un nuovo nodo e lo inserisce prima del nodo passato come parametro
+ *
+ * @param n   nodo prima del quale verrà inserito il nodo appena creato
+ * @param c   info contenuta nel nuovo nodo
+ *
+ * @return il puntatore al nuovo nodo in caso di successo, ritorna NULL e setta ernno in caso di errore
+ */
 nodo* insert_intesta( nodo* n, int c );
 
-//restituisce il puntatore al nodo inserito in coda al nodo passato come parametro
+/**
+ * @function insert_incoda
+ * @brief crea un nuovo nodo e lo inserisce dopo il nodo passato come parametro
+ *
+ * @param n   nodo dopo il quale verrà inserito il nodo appena creato
+ * @param c   info contenuta nel nuovo nodo
+ *
+ * @return il puntatore al nuovo nodo in caso di successo, ritorna NULL e setta ernno in caso di errore
+ */
 nodo* insert_incoda(nodo*n,int c);
 
-//restituisce il puntatore al nodo successivo
+/**
+ * @function delete
+ * @brief   eleimina un nodo della coda
+ *
+ * @param n   puntatore all'elemento da eliminare
+ *
+ * @return 0 in caso di successo, -1 caso di errore
+ */
 int delete (nodo* n);
 
-//prende in ingresso la testa della lista e cancella tutta la lista
-void delete_all(nodo* n);
+/**
+ * @function delete_coda
+ * @brief   elimina una lista doppia
+ *
+ * @param c  puntatore ad un nodo qualsiasi della lista;
+ *
+ */
+void delete_coda(nodo* n);
 
-//cancella il file descpriptor dalla da chiamare con mutua esclusione
-void delete_fd(coda_fd* c,nodo * n);
+/**
+ * @function delete_allfd
+ * @brief   elimina una struttura coda_fd
+ *
+ * @param c  puntatore alla struttura coda_fd che deve essere eliminata
+ *
+ */
+void delete_allfd(coda_fd* c);
 
-//aggiunge il fd alla coda;
-void add_fd( coda_fd* c, int fd);
+/**
+ * @function delete_fd
+ * @brief   eleimina un elemento da una struttura coda_fd
+ *
+ * @param c   struttura coda_fd dal quale deve essere eliminato l'elemento
+ * @param n   puntatore all'elemento da eliminare
+ *
+ * @return 0 in caso di successo, -1 caso di errore
+ */
+int delete_fd(coda_fd* c,nodo * n);
+
+/**
+ * @function add_fd
+ * @brief   aggiunge un elemento ad una struttura coda_fd
+ *
+ * @param c   struttura coda_fd al quale deve essere aggiunto un elemento
+ * @param fd   contrnuto dell'elemento da aggiungere
+ *
+ * @return 0 in caso di successo, -1 caso di errore
+ */
+int add_fd( coda_fd* c, int fd);
 

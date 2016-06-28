@@ -33,6 +33,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
 
 
 #define TRUE 1
@@ -80,7 +81,7 @@ void *dispatcher()
 {
 	printf("\n DISPATCHER PARTITO \n");fflush(stdout);// da eliminare
 
-	int fd_c;
+	int fd_c, aus;
 	struct sockaddr_un sa;
 
 
@@ -94,12 +95,7 @@ void *dispatcher()
 	ec_meno1_ex(listen(fd_skt,SOMAXCONN),"impossibile accettare connessioni");
 
 	while(e_flag==0 && i_flag==0){
-			//verifico se è arrivato un segnale;
-			//if(e_flag!=0){
-				//printf("%d nel dispatcher-------------------------------------\n\n\n",e_flag);
-				//fflush(stdout);
-				//break;
-			//}
+			aus=0;
 			Pthread_mutex_lock(&lk_conn);
 			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ //si possono ancora accettare connessioni
 				Pthread_mutex_unlock(&lk_conn);
@@ -109,13 +105,16 @@ void *dispatcher()
 				printf("\n\nnuova connessione accettata -> si procede all'inserimento del fd nella lista\n");
 
 				Pthread_mutex_lock(&lk_conn);
-				add_fd(coda_conn,fd_c);
+				ec_meno1_np(add_fd(coda_conn,fd_c), aus=-1);
 				Pthread_cond_signal(&cond_nuovolavoro);
 				Pthread_mutex_unlock(&lk_conn);
 			}
 			else{// impossibile accettare nuove connessioni connessioni
 				Pthread_mutex_unlock(&lk_conn);
 				ec_meno1(fd_c=accept(fd_skt,NULL,0),"connessione fallita");
+				aus=-1;
+			}
+			if(aus!=0){
 				message_t fail;
 				fail.hdr.op = OP_FAIL; 			//da definire poi un apposito messaggio per il numero massimo di connessioni raggiunto
 				ec_meno1(sendRequest(fd_c, &fail),"impossibile inviare messaggio");  
@@ -269,7 +268,6 @@ void* sig_handler(){
 				shutdown(fd_skt,SHUT_RDWR); //andrea quarta ha detto che non va bene
 				printf("%d -------------------------------------\n\n\n",e_flag);
 				fflush(stdout);
-				sleep(5);
 				printf("-----handler si sveglia e elimina tutto----\n");
 				fflush(stdout);
 				
@@ -279,9 +277,9 @@ void* sig_handler(){
 					fclose(aus);
 				}
 				
-				icl_hash_destroy(repository);
+				//icl_hash_destroy(repository);
 				//la coda delle connessioni dovrebbe essere vuota;
-				free(coda_conn);
+				//free(coda_conn);
 				aus_sig=0;
 				break;
 			}
@@ -289,6 +287,10 @@ void* sig_handler(){
 				i_flag=1;
 				shutdown(fd_skt,SHUT_RDWR);
 				aus_sig=0;
+				//icl_hash_destroy(repository);
+				//delete_allfd(coda_conn);
+				break;
+
 			}
 			
 		}
@@ -326,6 +328,11 @@ int main(int argc, char *argv[]) {
 	pthread_create(&handler,NULL,sig_handler,NULL);
 
 	coda_conn=initcoda();
+	if(errno!=0){
+		printf("impossibile creare repository\n");
+		fflush(stdout);
+		return 0;
+	}
 
 	parse(argv[2], &v_configurazione);
 	threadinpool = malloc(v_configurazione.ThreadsInPool*(sizeof(pthread_t)));
@@ -342,6 +349,8 @@ int main(int argc, char *argv[]) {
 	pthread_join(disp,NULL);
 	pthread_join(handler,NULL);
 	free(threadinpool);
+	icl_hash_destroy(repository);
+	delete_allfd(coda_conn);
 	printf("main termina\n");
 
 

@@ -1,25 +1,37 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <err_man.h>
 #include "liste.h"
 
-
+/**
+ * @function initcoda
+ * @brief alloca e inizializza una struttura coda_fd
+ *
+ * @return il puntatore alla struttura creata in caso di successo, ritorna NULL e setta errno in caso di errore
+ */
 coda_fd* initcoda(){
 	coda_fd* c;
-	if(( c=malloc(sizeof(coda_fd))) == NULL){
-		perror("create coda");
-	}else{
-		c->lenght=0;
-		c->testa=NULL;
-		c->testa_attesa=NULL;
-		c->coda=NULL;
-	}
+	ec_null_c( c=malloc(sizeof(coda_fd)),"create coda", return NULL);
+	c->lenght=0;
+	c->testa=NULL;
+	c->testa_attesa=NULL;
+	c->coda=NULL;
 	return c;
 }
 
-//restituisce il puntatore al nodo inserito prima del nodo passato come parametro
+/**
+ * @function insert_intesta
+ * @brief crea un nuovo nodo e lo inserisce prima del nodo passato come parametro
+ *
+ * @param n   nodo prima del quale verrà inserito il nodo appena creato
+ * @param c   info contenuta nel nuovo nodo
+ *
+ * @return il puntatore al nuovo nodo in caso di successo, ritorna NULL e setta ernno in caso di errore
+ */
 nodo* insert_intesta( nodo* n, int c ){
-	nodo* new= malloc(sizeof(nodo));
+	nodo* new;
+	ec_null_c(new= malloc(sizeof(nodo)), "create nodo", return NULL );
 	new->info=c;
 	if(n==NULL){
 		new->next=NULL;
@@ -31,9 +43,19 @@ nodo* insert_intesta( nodo* n, int c ){
 	}
 	return new;
 }
-//restituisce il puntatore al nodo inserito in coda al nodo passato come parametro
+
+/**
+ * @function insert_incoda
+ * @brief crea un nuovo nodo e lo inserisce dopo il nodo passato come parametro
+ *
+ * @param n   nodo dopo il quale verrà inserito il nodo appena creato
+ * @param c   info contenuta nel nuovo nodo
+ *
+ * @return il puntatore al nuovo nodo in caso di successo, ritorna NULL e setta ernno in caso di errore
+ */
 nodo* insert_incoda(nodo*n,int c){
-	nodo* new= malloc (sizeof(nodo));
+	nodo* new;
+	ec_null_c(new= malloc(sizeof(nodo)), "create nodo", return NULL );
 	new->info=c;
 	if(n==NULL){
 		new->prec=NULL;
@@ -48,9 +70,15 @@ nodo* insert_incoda(nodo*n,int c){
 	return new;
 
 }
-
-//restituisce il puntatore al nodo successivo
-int delete (nodo* n){
+/**
+ * @function delete
+ * @brief   eleimina un nodo della coda
+ *
+ * @param n   puntatore all'elemento da eliminare
+ *
+ * @return 0 in caso di successo, -1 caso di errore
+ */
+ int delete (nodo* n){
 	if(n!=NULL){
 		nodo* aus;
 		if(n->prec==NULL && n->next==NULL){
@@ -73,36 +101,69 @@ int delete (nodo* n){
 	return -1;
 }
 
-//prende in ingresso la testa della lista e cancella tutta la lista
-void delete_all(nodo* n){
-
+/**
+ * @function delete_coda
+ * @brief   elimina una lista doppia
+ *
+ * @param c  puntatore ad un nodo qualsiasi della lista;
+ *
+ */
+void delete_coda(nodo* n){
 	if(n!=NULL){
-		nodo* aus=n->next;
-		n->next=NULL;
+		delete_coda(n->next);
+		delete_coda(n->prec);
 		free(n);
-		delete_all(aus);
 	}
 
 }
 
-//cancella il file descpriptor dalla da chiamare con mutua esclusione
-void delete_fd(coda_fd* c,nodo * n){
+/**
+ * @function delete_allfd
+ * @brief   elimina una struttura coda_fd
+ *
+ * @param c  puntatore alla struttura coda_fd che deve essere eliminata
+ *
+ */
+void delete_allfd(coda_fd* c){
+		delete_coda(c->testa_attesa);
+		free(c);
+}
+
+/**
+ * @function delete_fd
+ * @brief   eleimina un elemento da una struttura coda_fd
+ *
+ * @param c   struttura coda_fd dal quale deve essere eliminato l'elemento
+ * @param n   puntatore all'elemento da eliminare
+ *
+ * @return 0 in caso di successo, -1 caso di errore
+ */
+ int delete_fd(coda_fd* c,nodo * n){
 	if( n== c->testa_attesa){
 		c->testa_attesa=n->next;
-		printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nBOOOOM\n");
 	}
 	if(n->next== NULL && c->coda==n){
 		c->coda=n->prec;
 	}
 	close(n->info);
-	delete(n);
+	ec_meno1_np(delete(n), return -1);
 	
 	c->lenght--;
+	return 0;
 }
 
-void add_fd( coda_fd* c, int fd){
+/**
+ * @function add_fd
+ * @brief   aggiunge un elemento ad una struttura coda_fd
+ *
+ * @param c   struttura coda_fd al quale deve essere aggiunto un elemento
+ * @param fd   contrnuto dell'elemento da aggiungere
+ *
+ * @return 0 in caso di successo, -1 caso di errore
+ */
+int add_fd( coda_fd* c, int fd){
 
-	c->coda = insert_incoda(c->coda,fd);
+	ec_null_np(c->coda = insert_incoda(c->coda,fd), return -1);
 	c->lenght++;
 	if(c->testa==NULL){
 		c->testa=c->coda;
@@ -111,7 +172,7 @@ void add_fd( coda_fd* c, int fd){
 	if(c->testa_attesa==NULL){
 			c->testa_attesa= c->coda;
 	}
-	
+	return 0;
 }
 
 
