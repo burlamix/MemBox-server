@@ -325,8 +325,7 @@ int main(int argc, char *argv[]) {
 	pthread_t *threadinpool;
 	pthread_t disp;
 	
-	pthread_create(&handler,NULL,sig_handler,NULL);
-
+	
 	coda_conn=initcoda();
 	if(errno!=0){
 		printf("impossibile creare repository\n");
@@ -349,6 +348,7 @@ int main(int argc, char *argv[]) {
 
 	repository = icl_hash_create( NB, v_configurazione.StorageSize, v_configurazione.StorageByteSize, v_configurazione.MaxObjSize);
 
+	pthread_create(&handler,NULL,sig_handler,NULL);
 	pthread_create(&disp, NULL, dispatcher,NULL);
 	for(int i=0;i<v_configurazione.ThreadsInPool;i++){
 		pthread_create(&threadinpool[i],NULL,worker, NULL);

@@ -41,6 +41,7 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
   message_data_t *obj=calloc(1,sizeof(message_data_t));
+  int op;
   Pthread_mutex_lock(&lk_stat);
   mboxStats->nput++;
   int newdim= mboxStats->current_size + (new_data->data.len);
@@ -65,8 +66,6 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
     Pthread_mutex_unlock(&lk_stat);
     return 0;
   } 
-
-  int op;
 
   if (repository->MaxObjSize!=0 && new_data->data.len > repository->MaxObjSize){
     risp.op= OP_PUT_SIZE;
@@ -220,7 +219,7 @@ int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthrea
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
 
-  pthread_mutex_lock(& repository->lk_repo);
+  Pthread_mutex_lock(& repository->lk_repo);
   if(repository->repo_l){//caso in cui la lock è già presa
       pthread_mutex_unlock(& repository->lk_repo);
 
@@ -234,17 +233,17 @@ int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthrea
   }else{
     repository->repo_l=1;
     repository->fd = fd;
-    pthread_mutex_unlock(& repository->lk_repo);
+    Pthread_mutex_unlock(& repository->lk_repo);
 
-    pthread_mutex_lock(&(repository->lk_job_c));
+    Pthread_mutex_lock(&(repository->lk_job_c));
     while(repository->job_c>1){
       printf("\nvalore di job =%d\n",repository->job_c);
 
-      pthread_cond_wait(&(repository->cond_job), &(repository->lk_job_c));
+      Pthread_cond_wait(&(repository->cond_job), &(repository->lk_job_c));
     }
       printf("\nvalore di job =%d\n",repository->job_c);
 
-    pthread_mutex_unlock(& repository->lk_job_c);
+    Pthread_mutex_unlock(& repository->lk_job_c);
 
     risp.op = OP_OK;
     sendReply( fd, &risp);
