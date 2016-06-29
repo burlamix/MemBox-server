@@ -1,16 +1,20 @@
 #!/bin/bash 
 
-if [ ! -e $1 ]  ; then
-	printf impossibile stampare $1 dato che non esiste
+#controllo che il file passato come parametro esita
+if [ ! -e $1 ]  ; then																				
+	printf impossibile utilizzare $1 dato che non esiste
 fi
 
-s=$(tail -n -1 $1)
+#taglio dal file l'ultima riga 
+s=$(tail -n -1 $1)																					
 
-s=${s#*-}
+#elimino le parti non necessarie
+s=${s#*-}																							
 
 i=0
 
-for n in $s ; do
+#stampo le statistiche dell'ultima riga
+for n in $s ; do 																					
 	if [ $i -eq 1 ]; then  printf "n. di PUT_OP ricevute = %s\n" "$n" ;fi
 	if [ $i -eq 2 ] ; then  printf "n. di PUT_OP fallite = %s\n" "$n" ;fi
 	if [ $i -eq 3 ] ; then  printf "n. di UPDATE_OP ricevute = %s\n" "$n" ;fi
@@ -30,16 +34,21 @@ for n in $s ; do
 	let i=i+1
 done
 
-echo 
+echo 																									
 if [ $2 ] ; then
-
-	PARSED_OPTIONS=$(getopt -n "$0"  -o psugrcsom --long "help"  -- "$@")
+#configuro le opzioni
+	PARSED_OPTIONS=$(getopt -n "$0"  -o psugrcsom --long "help"  -- "$@") 						
 
 	eval set -- "$PARSED_OPTIONS"
 
-	while true;
+#inizzializzo a zero le variabili che mi serviranno per le varie opsioni
+pp=0;uu=0;gg=0;rr=0;ccc=0;ss=0;oo=0;mm=0;hh=0													
+
+
+#nel caso un opsione sia tra i parametri setto a uno la variabile corelata, che succesivamente servirà per attuare l'opzione
+	while true;																					
 	do
-	  case $1 in
+	  case $1 in 
 	        -p)
 	            # echo  opzione p
 				pp=1
@@ -84,12 +93,13 @@ if [ $2 ] ; then
   			    break;;
 	  esac
 	done
-
-	max_a_nc=0
+#setto a zero i vari massimi
+	max_a_nc=0																					
 	max_a_s=0
 	max_a_ng=0
 
-	while read data trat put_o put_f up_o up_f get_o get_f rem_o rem_f lk_o lk_f nc siz max_s n_ogg max_ng ; do
+#scorro l'intero file delle statistiche a "righe", e per ogni ciclo del while che corrisponde a una riga, nel caso siano settati a 1 le variabili corrispondenti a un opzione, eseguo l'opzione
+	while read data trattino put_o put_f up_o up_f get_o get_f rem_o rem_f lk_o lk_f nc siz max_s n_ogg max_ng ; do
 
 		printf "\nle statistice del timestamp all'orario %s erano\n" "$data" 
 
