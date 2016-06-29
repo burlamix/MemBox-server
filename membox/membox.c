@@ -96,11 +96,12 @@ void *dispatcher()
 
 	while(e_flag==0 && i_flag==0){
 			aus=0;
+			ec_meno1_c(fd_c=accept(fd_skt,NULL,0), "connessione fallita", break);
+
 			Pthread_mutex_lock(&lk_conn);
 			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ //si possono ancora accettare connessioni
 				Pthread_mutex_unlock(&lk_conn);
 				//fallisce una connessione e buttiamo giù tutto?
-				ec_meno1_c(fd_c=accept(fd_skt,NULL,0), "connessione fallita", break);
 
 				printf("\n\nnuova connessione accettata -> si procede all'inserimento del fd nella lista\n");
 
@@ -111,7 +112,6 @@ void *dispatcher()
 			}
 			else{// impossibile accettare nuove connessioni connessioni
 				Pthread_mutex_unlock(&lk_conn);
-				ec_meno1(fd_c=accept(fd_skt,NULL,0),"connessione fallita");
 				aus=-1;
 			}
 			if(aus!=0){
@@ -149,13 +149,16 @@ void* worker(){
 	int ris_op;
 	message_t *dati =malloc(sizeof(message_t));
 
-	while(i_flag==0){
+	while(e_flag==0){
 	Pthread_mutex_lock(&lk_conn);
-		while(coda_conn->testa_attesa==NULL && e_flag==0 && i_flag==0){//verifica la presenza di nuovi lavori
+		while(e_flag==0 && i_flag==0 && coda_conn->testa_attesa==NULL){//verifica la presenza di nuovi lavori
 			printf("testa attesa è nulla -> il worker si sospende\n");	fflush(stdout);
 
 			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
 		}
+
+		if(e_flag!=0 && i_flag!=0) break;
+
 		printf("\n\n\n\n__________________________________inizio______________________________________________________________________");	fflush(stdout);
 
 		printf("\nworker si sveglia e procede a prendere una nuova connessione,");	fflush(stdout);
@@ -333,35 +336,46 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	//nel caso il file di configurazione passato non sia corretto, si da la possibilità di inserire il percorso di un nuovo file.
-	char * path = malloc(sizeof(char));
-	path = argv[2];
+
 	int i=0;
 	//si itera per 5 volte provando ongi volta il file di configurazione
-	while( i<5 && parse(path, &v_configurazione) != 0 ){
+	while( i<5 && parse(argv[2], &v_configurazione) != 0 ){
 		printf("ATTENZIONE: il file di configurazione è considerato non valido, hai la possibilità di scrivere il path di un altro file \n");
-		scanf("%s",path);
+		scanf("%s",argv[2]);
 		i++;
 	}
 
-	threadinpool = malloc(v_configurazione.ThreadsInPool*(sizeof(pthread_t)));
+	if(i<5){
+		threadinpool = malloc(v_configurazione.ThreadsInPool*(sizeof(pthread_t)));
 
-	repository = icl_hash_create( NB, v_configurazione.StorageSize, v_configurazione.StorageByteSize, v_configurazione.MaxObjSize);
+		repository = icl_hash_create( NB, v_configurazione.StorageSize, v_configurazione.StorageByteSize, v_configurazione.MaxObjSize);
 
-	pthread_create(&handler,NULL,sig_handler,NULL);
-	pthread_create(&disp, NULL, dispatcher,NULL);
-	for(int i=0;i<v_configurazione.ThreadsInPool;i++){
-		pthread_create(&threadinpool[i],NULL,worker, NULL);
-		pthread_detach(threadinpool[i]);
+		pthread_create(&handler,NULL,sig_handler,NULL);
+		pthread_create(&disp, NULL, dispatcher,NULL);
+		for(int i=0;i<v_configurazione.ThreadsInPool;i++){
+			pthread_create(&threadinpool[i],NULL,worker, NULL);
+			// pthread_detach(threadinpool[i]);
 
+		}
+		
+
+
+		pthread_join(disp,NULL);
+		pthread_join(handler,NULL);
+
+		for(int i=0;i<v_configurazione.ThreadsInPool;i++){
+			pthread_join(threadinpool[i],NULL);
+		}
+
+		free(threadinpool);
+
+		icl_hash_destroy(repository);
+		
+		Pthread_mutex_lock(&lk_conn);
+				delete_allfd(coda_conn);
+		Pthread_mutex_unlock(&lk_conn);
 	}
 	
-	pthread_join(disp,NULL);
-	pthread_join(handler,NULL);
-	free(threadinpool);
-	free(path);
-	icl_hash_destroy(repository);
-	delete_allfd(coda_conn);
 	printf("main termina\n");
 
 

@@ -112,6 +112,7 @@ void delete_coda(nodo* n){
 	if(n!=NULL){
 		delete_coda(n->next);
 		delete_coda(n->prec);
+		close(n->info);
 		free(n);
 	}
 
