@@ -37,7 +37,7 @@ done
 
 # invio il segnale per far terminare il server
 kill -USR2 $pid
-echo ciao
+
 sleep 2
 
 r=$(tail -10 ./valgrind_out | grep "ERROR SUMMARY" | cut -d: -f 2 | cut -d" " -f 2)
