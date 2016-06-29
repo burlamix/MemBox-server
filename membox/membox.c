@@ -39,7 +39,6 @@
 #define TRUE 1
 #define FALSE 0
 #define NB 1013
-#define SOCKNAME "/tmp/mbox_socket"
 /* struttura che memorizza le statistiche del server, struct statistics 
  * e' definita in stats.h.
  *
@@ -87,7 +86,7 @@ void *dispatcher()
 
 
 
-	(void) unlink(SOCKNAME);															// sistemo l'indirizzo 
+	(void) unlink(v_configurazione.UnixPath);															// sistemo l'indirizzo 
 	ec_null_ex(strncpy(sa.sun_path, v_configurazione.UnixPath,UNIX_PATH_MAX), "impossibile creare path");		 
 	sa.sun_family = AF_UNIX;
 
@@ -124,7 +123,7 @@ void *dispatcher()
 	}
 
 	ec_meno1_ex(close(fd_skt),"impossibile chiudere socket");
-	ec_meno1_ex(unlink(SOCKNAME),"errore di unlink");
+	ec_meno1_ex(unlink(v_configurazione.UnixPath),"errore di unlink");
 
 	//sveglio tutti i worker che sono in attesa sulla coda delle connessioni
 	//altrimenti si bloccano tutti e non verranno riattivati più dato che le connessioni da prendere sono finite;
@@ -146,7 +145,7 @@ void* worker(){
 
 	nodo* job;
 	int fd;
-	int i,a;
+	int i;
 	int ris_op;
 	message_t *dati =malloc(sizeof(message_t));
 
@@ -158,7 +157,7 @@ void* worker(){
 			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
 		}
 
-		if(e_flag!=0 && i_flag!=0) break;
+		if(e_flag!=0 && i_flag!=0) {Pthread_mutex_unlock(&lk_conn);break;}
 
 		printf("\n\n\n\n__________________________________inizio______________________________________________________________________");	fflush(stdout);
 
@@ -181,7 +180,7 @@ void* worker(){
 		while(readHeader(fd, &dati->hdr) && i_flag==0)// e poi ci infiliamo una read
 		{	
 			if(dati->hdr.op == PUT_OP || dati->hdr.op == UPDATE_OP ){
-				a=readData(fd,&dati->data);
+				readData(fd,&dati->data);
 			}else{
 				printf("********************read non legge! \n" );
 			}

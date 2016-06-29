@@ -1,5 +1,7 @@
 #if !defined(MEMBOX_ERRMAN_)
 #define MEMBOX_ERRMAN_
+#include <pthread.h>
+
 
 #define ec_meno1(s,m) \
 	if((s)==-1) { perror (m);} //exit failure ha senso?
@@ -27,21 +29,11 @@
 	if((s)==-1){ perror(m); c;}\
 	if((s)==0){ printf("\n\n\nciao\n\n\n\n");return 0;}
 
+void Pthread_mutex_lock(pthread_mutex_t* mutex);
+void Pthread_mutex_unlock(pthread_mutex_t* mutex); 
+void Pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex); 
+void Pthread_cond_signal(pthread_cond_t* cond); 
 
-#define Pthread_create(thread_id, attr, start_fnc, arg) \
-	if((int cod=pthread_create (thread_id, attr,start_fnc, arg))!=0){ perror("error in pthread create:");exit(EXIT_FAILURE);}
-
-#define Pthread_mutex_lock( mutex) \
-	if((pthread_mutex_lock(mutex))!=0){ perror("error in mutex lock:"); exit(EXIT_FAILURE);}
-
-#define Pthread_mutex_unlock( mutex)\
-	if((pthread_mutex_unlock(mutex))!=0){ printf("error in mutex unlock:"); exit(EXIT_FAILURE);}
-
-#define Pthread_cond_wait( cond, mtx) \
-	if((pthread_cond_wait(cond,mtx))!=0){ printf("error in cond wait:"); exit(EXIT_FAILURE);}
-
-#define Pthread_cond_signal( cond)\
-	if((pthread_cond_signal(cond))!=0){ printf("error in cond signal:"); exit(EXIT_FAILURE);}
 
 int cleanall(void*);
 //atexit da registrare

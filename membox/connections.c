@@ -71,7 +71,8 @@ int openConnection(char* path, unsigned int ntimes, unsigned int secs){
  */
 int readHeader(long fd, message_hdr_t *hdr){
 	int r=0;
-	ec_meno1_c (r=read(fd, hdr ,sizeof(message_hdr_t)),"read",return r);
+	ec_meno1_c (r=read(fd, hdr ,sizeof(message_hdr_t)),"read",return -1);
+	return r;
 }
 
 /**
