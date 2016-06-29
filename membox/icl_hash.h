@@ -67,7 +67,7 @@ int
 int
  icl_hash_delete( icl_hash_t *ht, unsigned long key);
 
-int
+void
 icl_hash_destroy(icl_hash_t *ht);
 
 

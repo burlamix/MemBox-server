@@ -1,12 +1,12 @@
 /**
  * @file icl_hash.c
  *
- * Dependency free hash table implementation.
+ * Implementazione di una tabella hash per la realizzazione di un repository 
+ * di message_data_t come definito nel @file message.h
  *
- * This simple hash table implementation should be easy to drop into
- * any other peice of code, it does not depend on anything else :-)
- * 
- * @author Jakub Kurzak
+ * Il codice per l'implementaione è stato ottenuto con delle modifiche al codice 
+ ] di Jakub kurzak che si riferiva a delle tabelle hash generiche.
+ * @author Jakub Kurzak, Simone Spagnoli, Eleonora Di Gregorio
  */
 /* $Id: icl_hash.c 2838 2011-11-22 04:25:02Z mfaverge $ */
 /* $UTK_Copyright: $ */
@@ -67,48 +67,47 @@ void freedata(message_data_t* aus) {
 
 
 /**
- * Create a new hash table.
+ * @function icl_hash_create
+ * @brief crea una nuova tabella hash
  *
- * @param[in] nbuckets -- number of buckets to create
- * @param[in] hash_function -- pointer to the hashing function to be used
- * @param[in] hash_key_compare -- pointer to the hash key comparison function to be used
+ * @param nbuckets numero di buckets da creare
+ * @param ss massima dimensione che può assumere il repository
+ * @param sbs massima dimensione che può assumere il repository espressa in byte
+ * @param mos massima dimensione che può assumere un oggetto del repository
  *
- * @returns pointer to new hash table.
+ * @returns il puntatore alla tabella hash in caso di successo, NULL in caso di fallimento
  */
 
 icl_hash_t *
 icl_hash_create( int nbuckets, int ss, int sbs, int mos){
     icl_hash_t *ht;
-    int i;
+    int i,aus;
 
     ht= (icl_hash_t*)malloc(sizeof(icl_hash_t));
     if(!ht) return NULL;
 
     ht->nbuckets = nbuckets;
-    ht->nentries = 0;
     ht->StorageSize=ss;
     ht->StorageByteSize=sbs;
     ht->MaxObjSize=mos;
-    pthread_mutex_init(&ht->lk_repo, NULL);
+    if((aus=pthread_mutex_init(&ht->lk_repo, NULL))!=0) { free(ht); return NULL;}
     ht->repo_l=0;
     ht->fd=-1;
-    //gestione errore
     
-    pthread_mutex_init(&ht->lk_job_c, NULL);
+    if((aus=pthread_mutex_init(&ht->lk_job_c, NULL))!=0) {free(ht); return NULL; }
     ht->job_c=0;
-    //gestione errore
-    pthread_cond_init(&ht->cond_job,NULL);
+    if((aus=pthread_cond_init(&ht->cond_job,NULL))!=0) { free(ht); return NULL; }
     
     
     ht->buckets = (icl_entry_t**)malloc(nbuckets * sizeof(icl_entry_t*));
-    if(!ht->buckets) return NULL;
+    if(!ht->buckets) {free(ht); return NULL;}
     ht->lkline = (icl_entry_lk*)malloc(nbuckets * sizeof(icl_entry_lk));
-    if(!ht->lkline) return NULL;
+    if(!ht->lkline) {free(ht); free(ht->buckets); return NULL; }
 
     for(i=0;i<ht->nbuckets;i++){
         ht->buckets[i] = NULL;
-        pthread_cond_init(&(ht->lkline[i].cond_line),NULL);
-        pthread_mutex_init(&(ht->lkline[i].mutex_line),NULL);
+        if((aus=pthread_cond_init(&(ht->lkline[i].cond_line),NULL))!=0) {free(ht); free(ht->buckets); free(ht->lkline);return NULL;}
+        if((aus=pthread_mutex_init(&(ht->lkline[i].mutex_line),NULL))!=0) {free(ht); free(ht->buckets); free(ht->lkline);return NULL;}
         ht->lkline[i].c=-1;
     }
     return ht;
@@ -118,13 +117,14 @@ icl_hash_create( int nbuckets, int ss, int sbs, int mos){
 
 
 /**
- * Search for an entry in a hash table.
+ * @function icl_hash_find
+ * @brief cerca un elemento nella tabella hash
  *
- * @param ht -- the hash table to be searched
- * @param key -- the key of the item to search for
+ * @param ht  la tabella hash nella quale cercare l'elemento
+ * @param key   la chiave dell'elemento che deve essere cercato
  *
- * @returns pointer to the data corresponding to the key.
- *   If the key was not found, returns NULL.
+ * @returns il puntatore all'elemento che deve essere cercato se è presente,
+ *          NULL se l'elemento non è trovato
  */
 
 message_data_t *
@@ -162,13 +162,15 @@ icl_hash_find(icl_hash_t *ht, unsigned long key){
 }
 
 /**
- * Insert an item into the hash table.
+ * @function icl_hash_insert
+ * @brief inserisce un elemento nella tabella hash
  *
- * @param ht -- the hash table
- * @param key -- the key of the new item
- * @param data -- pointer to the new item's data
+ * @param ht   la tabella hash nel quale bisogna inserire l'elemento
+ * @param key   la chiave del nuovo elemento
+ * @param data  l'elemento da inserire nella tabella hash
  *
- * @returns 0 if is ok, -1 on a malloc error, -2 if the object altready exists., -3 invalid argument
+ * @returns 0 in caso di successo, -1 per il fallimento dell'allocazione, 
+ *          -2 se l'elemento esite già, -3 se i parametri passati non sono corretti
  */
 
 int
@@ -189,7 +191,7 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
     Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
     
     while(ht->lkline[hash_val].c!=-1){
-            pthread_cond_wait(&(ht->lkline[hash_val].cond_line),&(ht->lkline[hash_val].mutex_line));
+            Pthread_cond_wait(&(ht->lkline[hash_val].cond_line),&(ht->lkline[hash_val].mutex_line));
     }
     ht->lkline[hash_val].c=1;
     Pthread_mutex_unlock(&(ht->lkline[hash_val].mutex_line));
@@ -208,7 +210,6 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
                 curr->data = data;
                 curr->next = ht->buckets[hash_val]; /* add at start */
                 ht->buckets[hash_val] = curr;
-                ht->nentries++;
             }
     }
     Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
@@ -222,14 +223,13 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
 
 
 /**
- * Free one hash table entry located by key (key and data are freed using functions).
+ * @function icl_hash_delete
+ * @brief elimina un elemento dalla tabella hash
  *
- * @param ht -- the hash table to be freed
- * @param key -- the key of the new item
- * @param free_key -- pointer to function that frees the key
- * @param free_data -- pointer to function that frees the data
+ * @param ht tabella hash dalla quale eliminare l'elemento
+ * @param key chiave dell'elemento che deve essere eliminato
  *
- * @returns len of data on success, -1 on failure.
+ * @returns la dimensione dell'elemento in caso di successo, -1 in caso di fallimento.
  */
 
 int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
@@ -256,7 +256,6 @@ int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
             }else{
                 prev->next=curr->next;
             }
-            ht->nentries--; //ci sarà da mettere in mutua escusione??
             aus=curr->data->len;
             free(curr->data->buf);
             free(curr->data);
@@ -280,21 +279,17 @@ int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
 
 
 /**
- * Free hash table structures (key and data are freed using functions).
+ * @function icl_hash_destroy 
+ * @brief elimina tutti gli elementi della tabella hash e la tabella stessa
  *
- * @param ht -- the hash table to be freed
- * @param free_key -- pointer to function that frees the key
- * @param free_data -- pointer to function that frees the data
+ * @param ht   la tabella che deve essere libarata
  *
- * @returns 0 on success, -1 on failure.
  */
-int
+void
 icl_hash_destroy(icl_hash_t *ht)
 {
     icl_entry_t *bucket, *curr, *next;
     int i;
-
-    if(!ht) return -1;
 
     for (i=0; i<ht->nbuckets; i++) {
         bucket = ht->buckets[i];
@@ -311,16 +306,16 @@ icl_hash_destroy(icl_hash_t *ht)
     if(ht->lkline) free(ht->lkline);
     if(ht) free(ht);
 
-    return 0;
 }
 
 /**
- * Dump the hash table's contents to the given file pointer.
+ * @function icl_hash_dump
+ * @brief stampa il contenuto della tabella hash su un file
  *
- * @param stream -- the file to which the hash table should be dumped
- * @param ht -- the hash table to be dumped
+ * @param stream il file aperto sul quale viene stampato il contenuto della tabella hash
+ * @param ht la tabella hash da stampare
  *
- * @returns 0 on success, -1 on failure.
+ * @returns 0 in caso di successo, -1 in caso di errore
  */
 
 int

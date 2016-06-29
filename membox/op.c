@@ -13,11 +13,31 @@ int StorageSize= 3000;
 int StorageByteSize= 7000;
 int MaxObjSize= 100;
 
+
+/**
+ * @function sendReply
+ * @brief invia un messaggio di risposta al client
+ *
+ * @param fd file descriptor nel quale scrivere il messaggio
+ * @param hdr puntatore alla struttura message_hdr_t che rappresenta il messaggio di risposta
+ *
+ *
+ * @returns 0 in caso di successo,-1 in caso di fallimento
+ */
 int sendReply(long fd, message_hdr_t *hdr){
-  write(fd, hdr ,sizeof(message_hdr_t));
+
+  ec_meno1_c(write(fd, hdr ,sizeof(message_hdr_t)),"impossibile inviare risposta",return -1);
   return 0;
 }
 
+/**
+ * @function SizeofRep
+ * @brief calcola la dimensione della repository
+ *
+ * @param repo repository della quale si deve calcolare la dimensione
+ *
+ * @returns la dimensione in caso di successo,-1 in caso di fallimento
+ */
 int SizeOfRep( icl_hash_t* repo){
   icl_entry_t *bucket, *curr;
     int i,size;
@@ -35,12 +55,23 @@ int SizeOfRep( icl_hash_t* repo){
     return size;
 }
 
-
+/**
+ * @function put_op
+ * @brief funzione per la gestione dell'inserimento di un oggetto nel repository
+ *
+ * @param new_data   puntatore all'oggetto da inserire
+ * @param repository   puntatore alla tabella hash nella quale inserire l'oggetto
+ * @param fd   file descriptor per comunicazione dell'esito al client richiedente
+ * @param mboxStats puntatore alla struttura per l'aggiornamento delle statistiche
+ * @param lk_stat variabile di mutua esclusione per l'accesso alla struttura delle statistiche
+ *
+ * @returns 0 in caso di successo,-1 in caso di fallimento
+ */
 int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statistics *mboxStats, pthread_mutex_t lk_stat ){
   
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
-  message_data_t *obj=calloc(1,sizeof(message_data_t));
+  message_data_t *obj;
   int op;
   Pthread_mutex_lock(&lk_stat);
   mboxStats->nput++;
@@ -51,34 +82,38 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
   //si verifica che la repository non abbia raggiunto il massimo numero di elementi
   if ( repository->StorageSize!=0 && curr_obj >= repository->StorageSize){
     risp.op= OP_PUT_TOOMANY;
-    sendReply( fd, &risp);
     Pthread_mutex_lock(&lk_stat);
     mboxStats->nput_failed++;
     Pthread_mutex_unlock(&lk_stat);
+    ec_meno1_np(sendReply( fd, &risp), return -1);
     return 0;
   }
   //la condizione sulla dimensione della repository viene controllata prima di fare l'inserimento
   if(repository->StorageByteSize!=0 && newdim> repository->StorageByteSize){
     risp.op= OP_PUT_REPOSIZE;
-    sendReply( fd, &risp);
     Pthread_mutex_lock(&lk_stat);
     mboxStats->nput_failed++;
     Pthread_mutex_unlock(&lk_stat);
+    ec_meno1_np(sendReply( fd, &risp), return -1);
     return 0;
   } 
 
   if (repository->MaxObjSize!=0 && new_data->data.len > repository->MaxObjSize){
     risp.op= OP_PUT_SIZE;
-    sendReply( fd, &risp);
     Pthread_mutex_lock(&lk_stat);
     mboxStats->nput_failed++;
     Pthread_mutex_unlock(&lk_stat);
+    ec_meno1_np(sendReply( fd, &risp), return -1);
     return 0;
   }
-  obj->len=new_data->data.len;
-  obj->buf=(char*)malloc(obj->len);
-  memcpy(obj->buf,new_data->data.buf, new_data->data.len);
-  op=icl_hash_insert( repository, new_data->hdr.key, obj);
+
+  ec_null_c(obj=calloc(1,sizeof(message_data_t)),"impossibile allocare oggetto",op=-1);
+  if(obj!=NULL){
+    obj->len=new_data->data.len;
+    obj->buf=(char*)malloc(obj->len);
+    memcpy(obj->buf,new_data->data.buf, new_data->data.len);
+    op=icl_hash_insert( repository, new_data->hdr.key, obj);
+  }
   switch (op){
     case 0 :
       risp.op= OP_OK;
@@ -105,10 +140,23 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
     	Pthread_mutex_unlock(&lk_stat);
     	break;
   }
-  sendReply( fd, &risp);
+  ec_meno1_np(sendReply( fd, &risp), return -1);
   return 0;
 }
 
+
+/**
+ * @function update_op
+ * @brief funzione per la gestione dell'aggiornamento di un oggetto nel repository
+ *
+ * @param new_mex   puntatore al messaggio di richiesta aggiornamento
+ * @param repository   puntatore alla tabella hash nella quale cercare l'oggetto da aggiornare
+ * @param fd   file descriptor per comunicazione dell'esito al client richiedente
+ * @param mboxStats puntatore alla struttura per l'aggiornamento delle statistiche
+ * @param lk_stat variabile di mutua esclusione per l'accesso alla struttura delle statistiche
+ *
+ * @returns 0 in caso di successo,-1 in caso di fallimento
+ */
 int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat){
 
   message_data_t* dato = (message_data_t*) icl_hash_find( repository, new_mex->hdr.key);
@@ -117,11 +165,11 @@ int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statist
   
   if(dato==NULL){
     risp.op= OP_UPDATE_NONE;
-    sendReply( fd, &risp);
     Pthread_mutex_lock(&lk_stat);
     mboxStats->nupdate++;
     mboxStats->nupdate_failed++;
-	Pthread_mutex_unlock(&lk_stat);
+	  Pthread_mutex_unlock(&lk_stat);
+    ec_meno1_np(sendReply( fd, &risp), return -1);
     return 0;
   }
   if (dato->len != new_mex->data.len){
@@ -129,23 +177,34 @@ int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statist
     Pthread_mutex_lock(&lk_stat);
     mboxStats->nupdate++;
     mboxStats->nupdate_failed++;
-	Pthread_mutex_unlock(&lk_stat);
+	  Pthread_mutex_unlock(&lk_stat);
   }else{
-    // free(dato->buf);
-    // dato->buf=new_mex->data.buf;      //non sono sicuro al100% che sia la maniera corretta di farlo
     memcpy((void*)dato->buf,(void*)new_mex->data.buf,dato->len);  // qui non va fatto così ma senno
-    // free(new_mex);
 
     risp.op= OP_OK;
     Pthread_mutex_lock(&lk_stat);
     mboxStats->nupdate++;
-	Pthread_mutex_unlock(&lk_stat);
-
+	  Pthread_mutex_unlock(&lk_stat);
   }
-  sendReply( fd, &risp);
+  
+  ec_meno1_np(sendReply( fd, &risp), return -1);
+
   return 0;
 }
 
+
+/**
+ * @function remove_op
+ * @brief funzione per la gestione della rimozione di un oggetto nel repository
+ *
+ * @param repository   puntatore alla tabella hash nella quale cercare l'oggetto da eliminare
+ * @param key   chiave identificativa dell'oggetto da eliminare
+ * @param fd   file descriptor per comunicazione dell'esito al client richiedente
+ * @param mboxStats puntatore alla struttura per l'aggiornamento delle statistiche
+ * @param lk_stat variabile di mutua esclusione per l'accesso alla struttura delle statistiche
+ *
+ * @returns 0 in caso di successo,-1 in caso di fallimento
+ */
 int remove_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat){
 
   int op= icl_hash_delete( repository, key);
@@ -166,10 +225,22 @@ int remove_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics
     	mboxStats->nremove_failed++;
 		Pthread_mutex_unlock(&lk_stat);
   }
-    sendReply( fd, &risp);
+  ec_meno1_np(sendReply( fd, &risp), return -1);
   return 0;
 }
 
+/**
+ * @function get_op
+ * @brief funzione per la gestione della ricerca di un oggetto nel repository
+ *
+ * @param repository   puntatore alla tabella hash nella quale cercare l'oggetto
+ * @param key   chiave identificativa dell'oggetto
+ * @param fd   file descriptor per comunicazione dell'esito al client richiedente
+ * @param mboxStats puntatore alla struttura per l'aggiornamento delle statistiche
+ * @param lk_stat variabile di mutua esclusione per l'accesso alla struttura delle statistiche
+ *
+ * @returns 0 in caso di successo,-1 in caso di fallimento
+ */
 int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat  ){
 
     message_data_t* dato;
@@ -193,38 +264,42 @@ int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *
 		  Pthread_mutex_unlock(&lk_stat);
 
     }
-    sendReply(fd, &risp);
-
+    ec_meno1_np(sendReply( fd, &risp), return -1);
     if(risp.op==OP_OK){
-      write(fd, &(dato->len ),sizeof(int));
+      ec_meno1_np(write(fd, &(dato->len ),sizeof(int)), return -1);
       char * aus;
       aus= dato->buf ;
       int scritti = 0;
       int da_scrivere = dato->len;
-
       while(da_scrivere>0){
         scritti=write(fd, aus , da_scrivere );
-
-        // printf("\nscrivo----->%d<--\n",scritti );
         aus=aus+scritti-1;
         da_scrivere=da_scrivere-scritti;
-        // printf("********%d************write scrive%d\n",i,r );
       }
-      //write(fd, dato->buf , dato->len);
     }
     return 0;
 }
 
+/**
+ * @function lock_op
+ * @brief funzione per accedere in mutua esclusione repository
+ *
+ * @param repository   puntatore alla tabella hash che implementa la repository
+ * @param mboxStats puntatore alla struttura per l'aggiornamento delle statistiche
+ * @param lk_stat variabile di mutua esclusione per l'accesso alla struttura delle statistiche
+ *
+ * @returns 0 in caso di successo,-1 in caso di fallimento
+ */
 int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ){
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
 
   Pthread_mutex_lock(& repository->lk_repo);
   if(repository->repo_l){//caso in cui la lock è già presa
-      pthread_mutex_unlock(& repository->lk_repo);
+      Pthread_mutex_unlock(& repository->lk_repo);
 
       risp.op = OP_LOCKED;
-      sendReply( fd, &risp);
+      ec_meno1_np(sendReply( fd, &risp), return -1);
       Pthread_mutex_lock(&lk_stat);
       mboxStats->nlock++;
       mboxStats->nlock_failed++;
@@ -233,20 +308,20 @@ int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthrea
   }else{
     repository->repo_l=1;
     repository->fd = fd;
-    Pthread_mutex_unlock(& repository->lk_repo);
+    pthread_mutex_unlock(& repository->lk_repo);
 
-    Pthread_mutex_lock(&(repository->lk_job_c));
+    pthread_mutex_lock(&(repository->lk_job_c));
     while(repository->job_c>1){
       printf("\nvalore di job =%d\n",repository->job_c);
 
-      Pthread_cond_wait(&(repository->cond_job), &(repository->lk_job_c));
+      pthread_cond_wait(&(repository->cond_job), &(repository->lk_job_c));
     }
       printf("\nvalore di job =%d\n",repository->job_c);
 
-    Pthread_mutex_unlock(& repository->lk_job_c);
+    pthread_mutex_unlock(& repository->lk_job_c);
 
     risp.op = OP_OK;
-    sendReply( fd, &risp);
+    ec_meno1_np(sendReply( fd, &risp), return -1);
     Pthread_mutex_lock(&lk_stat);
     mboxStats->nlock++;
     Pthread_mutex_unlock(&lk_stat);
@@ -254,30 +329,52 @@ int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthrea
   return 0;
 }
 
+/**
+ * @function unlock_op
+ * @brief funzione per rilasciare la mutua esclusione della repository
+ *
+ * @param fd filedescriptor della comunicazione nella quale è chiesta l'unlock
+ * @param repository   puntatore alla tabella hash che implementa la repository
+ * @param mboxStats puntatore alla struttura per l'aggiornamento delle statistiche
+ * @param lk_stat variabile di mutua esclusione per l'accesso alla struttura delle statistiche
+ *
+ * @returns 0 in caso di successo,-1 in caso di fallimento
+ */
 int unlock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ){
 
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
 
 
-    pthread_mutex_lock(& repository->lk_repo);
+    Pthread_mutex_lock(& repository->lk_repo);
     if(repository->repo_l && fd == repository->fd){//caso in cui la lock è stata presa in maniera corretta
         repository->repo_l=0;
-        pthread_mutex_unlock(&(repository->lk_repo));
+        Pthread_mutex_unlock(&(repository->lk_repo));
 
         risp.op = OP_OK;
-        sendReply(fd, &risp);
+        ec_meno1_np(sendReply( fd, &risp), return -1);
     }else{//caso in cui la lock non è già stata presa o è stata presa da qualcunaltro
-        pthread_mutex_unlock(& repository->lk_repo);
+        Pthread_mutex_unlock(& repository->lk_repo);
 
         risp.op = OP_LOCK_NONE;
-        sendReply(fd, &risp);
+        ec_meno1_np(sendReply( fd, &risp), return -1);
     }
   return 0;
 }
 
 
-
+/**
+ * @function gest_op
+ * @brief funzione per la gestione delle operazioni sulla repository
+ *
+ * @param mex puntatore al messaggio di richiesta dell'operazione
+ * @param fd filedescriptor della comunicazione nella quale è chiesta l'operazione
+ * @param repository   puntatore alla tabella hash che implementa la repository
+ * @param mboxStats puntatore alla struttura per l'aggiornamento delle statistiche
+ * @param lk_stat variabile di mutua esclusione per l'accesso alla struttura delle statistiche
+ *
+ * @returns 0 in caso di successo,-1 in caso di fallimento
+ */
 int gest_op(message_t * mex,long fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat){
 
    int ris_op;
