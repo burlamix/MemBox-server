@@ -45,6 +45,7 @@
  *
  */
 struct statistics  mboxStats = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+FILE* file_stat;
 //_______________________________________________________________________________________________________strutture_________________________________
 
 //coda dei fd relativi al socket
@@ -259,11 +260,7 @@ void* sig_handler(){
 		printf(" SEGNALE:%d",sig);fflush(stdout);
 		switch (sig) {
 			case SIGUSR1: {
-				if (v_configurazione.StatFileName!=NULL){
-					FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
-					printStats(aus);
-					fclose(aus);
-				}
+				if (file_stat!=NULL) printStats(file_stat);
 				break;
 			}
 			case SIGUSR2: {
@@ -274,15 +271,8 @@ void* sig_handler(){
 				printf("-----handler si sveglia e elimina tutto----\n");
 				fflush(stdout);
 				
-				if (v_configurazione.StatFileName!=NULL){
-					FILE* aus=fopen(v_configurazione.StatFileName,"w"); 
-					printStats(aus);
-					fclose(aus);
-				}
-				
-				//icl_hash_destroy(repository);
-				//la coda delle connessioni dovrebbe essere vuota;
-				//free(coda_conn);
+				if (file_stat!=NULL) printStats(file_stat);
+
 				aus_sig=0;
 				break;
 			}
@@ -290,8 +280,6 @@ void* sig_handler(){
 				i_flag=1;
 				shutdown(fd_skt,SHUT_RDWR);
 				aus_sig=0;
-				//icl_hash_destroy(repository);
-				//delete_allfd(coda_conn);
 				break;
 
 			}
@@ -346,6 +334,10 @@ int main(int argc, char *argv[]) {
 	}
 
 	if(i<5){
+
+		if (v_configurazione.StatFileName!=NULL){
+			ec_null(file_stat=fopen(v_configurazione.StatFileName,"w+"),"impossibile creare file statistiche"); 
+		}
 		threadinpool = malloc(v_configurazione.ThreadsInPool*(sizeof(pthread_t)));
 
 		repository = icl_hash_create( NB, v_configurazione.StorageSize, v_configurazione.StorageByteSize, v_configurazione.MaxObjSize);
@@ -374,6 +366,7 @@ int main(int argc, char *argv[]) {
 		Pthread_mutex_lock(&lk_conn);
 				delete_allfd(coda_conn);
 		Pthread_mutex_unlock(&lk_conn);
+		if(file_stat!=NULL && fclose(file_stat)!=0) perror("impossibile chiudere file statistiche");
 	}
 	
 	printf("main termina\n");
