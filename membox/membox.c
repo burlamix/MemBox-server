@@ -359,6 +359,7 @@ int main(int argc, char *argv[]) {
 	pthread_join(disp,NULL);
 	pthread_join(handler,NULL);
 	free(threadinpool);
+	free(path);
 	icl_hash_destroy(repository);
 	delete_allfd(coda_conn);
 	printf("main termina\n");

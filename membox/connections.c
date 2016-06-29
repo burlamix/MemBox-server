@@ -1,6 +1,8 @@
 
 #include <message.h>
 #include <connections.h>
+#include <err_man.h>
+
 
 #include <time.h>
 #include <sys/un.h>
@@ -38,20 +40,21 @@ int openConnection(char* path, unsigned int ntimes, unsigned int secs){
 	int i=0;
 	struct sockaddr_un sa;
 
-						 
-	strncpy(sa.sun_path, path ,UNIX_PATH_MAX);				/* sistemo l'indirizzo */
+	//sistemo l'indirizzo
+	strncpy(sa.sun_path, path ,UNIX_PATH_MAX);				
 	sa.sun_family = AF_UNIX;
+	
+	//preparo la soket
+	ec_meno1_c(fd_c=socket(AF_UNIX,SOCK_STREAM,0),"socket",return -1);
 
-	fd_c=socket(AF_UNIX,SOCK_STREAM,0);						/* preparo la socket */						//gestione errori
-
-	while ( (connect( fd_c, (struct sockaddr*) &sa,  sizeof(sa)) == -1) && i < ntimes ) {				//gestione errori
+	while ( (connect( fd_c, (struct sockaddr*) &sa,  sizeof(sa)) == -1) && i < ntimes ) {
 		i++;
 		sleep(secs);							 
 	}
 
 	if(i<ntimes)printf("connessione del client stabilita\n");	
-
-	if(i==ntimes) return -1;
+	//se in 10 tentativi non sono riuscito a fare la connect allora ritorno errore
+	if(i==ntimes) {perror("connect");return -1;}
 	else         return fd_c;
 }
 
@@ -64,10 +67,11 @@ int openConnection(char* path, unsigned int ntimes, unsigned int secs){
  * @param fd     descrittore della connessione
  * @param hdr    puntatore all'header del messaggio da ricevere
  *
- * @return 0 in caso di successo -1 in caso di errore
+ * @return quanto ha letto la read in caso di successo, -1 in caso di errore
  */
 int readHeader(long fd, message_hdr_t *hdr){
-	return (read(fd, hdr ,sizeof(message_hdr_t)));
+	int r=0;
+	ec_meno1_c (r=read(fd, hdr ,sizeof(message_hdr_t)),"read",return r);
 }
 
 /**
@@ -77,26 +81,30 @@ int readHeader(long fd, message_hdr_t *hdr){
  * @param fd     descrittore della connessione
  * @param data   puntatore al body del messaggio
  *
- * @return 0 in caso di successo -1 in caso di errore
+ * @return 0 in caso di successo, -1 in caso di errore
  */
-int readData(long fd, message_data_t *data){					// da notare i valori di ritorno chiesti nel header della funzione questa e delle altre
+int readData(long fd, message_data_t *data){
+	int r=0;
+	
+	//leggo dal fd la lunghezza del messaggio
+	ec_meno1_c (r=read(fd, &(data->len),sizeof(int)),"read", return -1);
 
-	if (read(fd, &(data->len) ,sizeof(int))==0 ) return 0;
 
-	data->buf =malloc(data->len);
+	ec_null_c (data->buf = malloc(data->len) , "malloc",return -1 );
+
 	char *aus = data->buf;
 
 	int letti=0;
 	int da_leggere=data->len;
 
+	//faccio delle read finche non ho ricevuto la totalità del messaggio
 	while(da_leggere>0){
-		
-		letti = read(fd, aus ,da_leggere);
+		ec_meno1_c( letti = read(fd, aus ,da_leggere),"read", free(data->buf); return -1);
 		// printf("\nletti----->%d<--\n",letti );
 		aus = aus +letti;
 		da_leggere=da_leggere-letti;
 	}
-	return 1;
+	return 0;
 }
 
 
@@ -114,21 +122,23 @@ int readData(long fd, message_data_t *data){					// da notare i valori di ritorn
  *
  * @return 0 in caso di successo -1 in caso di errore
  */
-int sendRequest(long fd, message_t *msg){							//possibilità di migliorare il protocollo mandando messaggi di dimenzione variabile e calcolarsi quanto si è letto e quanto manca da leggere
+int sendRequest(long fd, message_t *msg){
+	//scrivo l'hdr sul fd
+	ec_meno1_c( write(fd, &msg->hdr ,sizeof(message_hdr_t)), "wrtie", return -1);
 
-	write(fd, &msg->hdr ,sizeof(message_hdr_t));
-
+	//nel caso è un messaggio di PUT_OP o UPDATE_OP scrivo anche il body
 	if(msg->hdr.op == PUT_OP || msg->hdr.op == UPDATE_OP ){
 		
-		write(fd, &((msg->data).len ),sizeof(int));
+		ec_meno1_c( write(fd, &((msg->data).len ),sizeof(int)), "wrtie", return -1);
 		char * aus;
 		aus= msg->data.buf ;
 
 		int scritti = 0;
 		int da_scrivere = msg->data.len;
 
+		//faccio delle write finche non ho ricevuto la totalità del messaggio
 		while(da_scrivere>0){
-			scritti=write(fd, aus , da_scrivere );
+			ec_meno1_c( scritti=write(fd, aus , da_scrivere ), "wrtie", return -1);
 
 			// printf("\nscrivo----->%d<--\n",scritti );
 			aus=aus+scritti-1;
