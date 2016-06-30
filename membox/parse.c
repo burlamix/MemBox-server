@@ -1,3 +1,9 @@
+ /**	 
+ 	\file parse.c  
+     \author Simone Spagnoli 520613 & Eleonora Di Greogrio 520655
+     Si dichiara che il contenuto di questo file e' in ogni sua parte opera  
+     originale degli autori.  
+*/
 #define _GNU_SOURCE	// ca capire bene perchè senza questo la get line non va
 #include <stdio.h>
 #include <stdio.h>

@@ -5,10 +5,13 @@
  * Docenti: Pelagatti, Torquati
  *
  */
-/**
- * @file membox.c
- * @brief File principale del server membox
- */
+ /**	 
+ 	\file membox.c  
+     \author Simone Spagnoli 520613 & Eleonora Di Greogrio 520655
+     Si dichiara che il contenuto di questo file e' in ogni sua parte opera  
+     originale degli autori.  
+*/
+ 
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <unistd.h>

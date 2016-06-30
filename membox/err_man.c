@@ -1,3 +1,9 @@
+ /**	 
+ 	\file err_man.c  
+     \author Simone Spagnoli 520613 & Eleonora Di Greogrio 520655
+     Si dichiara che il contenuto di questo file e' in ogni sua parte opera  
+     originale degli autori.  
+*/
 #define _XOPEN_SOURCE
 
 #include <stdio.h>
