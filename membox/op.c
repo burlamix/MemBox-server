@@ -8,6 +8,7 @@
 #include <icl_hash.h>
 #include <err_man.h>
 #include <stats.h>
+#include <connections.h>
 
 int StorageSize= 3000;
 int StorageByteSize= 7000;

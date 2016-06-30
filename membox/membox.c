@@ -159,7 +159,6 @@ void* worker(){
 
 	nodo* job;
 	int fd;
-	int i;
 	int ris_op;
 	//struttura che serve per riceverei i messaggi
 	message_t *dati =malloc(sizeof(message_t));
@@ -203,7 +202,7 @@ void* worker(){
 		
 		Pthread_mutex_lock(&(repository->lk_repo));
 		if(repository->repo_l == 1 && repository->fd == fd){
-			repository->repo_l == 0;
+			repository->repo_l = 0;
 		}
 		Pthread_mutex_unlock(&(repository->lk_repo));
 
