@@ -28,8 +28,7 @@ void Pthread_mutex_lock(pthread_mutex_t* mutex) {
 	}
 
 	if(i==10){
-		printf("error in mutex lock:%d",err); 
-		ec_meno1(kill(0, SIGUSR2),"kill");
+		abort();
 	}
 }
 /**
@@ -48,8 +47,9 @@ void Pthread_mutex_unlock(pthread_mutex_t* mutex) {
 	}
 	
 	if(i==10){
-		printf("error in mutex unlock:%d",err); 
-		ec_meno1(kill(0, SIGUSR2),"kill");
+		abort();
+		//printf("error in mutex unlock:%d",err); 
+		//ec_meno1(kill(0, SIGUSR2),"kill");
 	}
 }
 /**
@@ -69,8 +69,9 @@ void Pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
 	}
 	
 	if(i==10){
-		printf("error in cond wait:%d",err); 
-		ec_meno1(kill(0, SIGUSR2),"kill");
+		abort();
+		//printf("error in cond wait:%d",err); 
+		//ec_meno1(kill(0, SIGUSR2),"kill");
 	}
 }
 /**
@@ -89,7 +90,8 @@ void Pthread_cond_signal(pthread_cond_t* cond) {
 	}
 	
 	if(i==10){
-		printf("error in cond signal:%d",err); 
-		ec_meno1(kill(0, SIGUSR2),"kill");
+		abort();
+		//printf("error in cond signal:%d",err); 
+		//ec_meno1(kill(0, SIGUSR2),"kill");
 	}
 }

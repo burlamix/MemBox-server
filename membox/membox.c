@@ -246,11 +246,11 @@ void* sig_handler(){
 		printf(" SEGNALE:%d",sig);fflush(stdout);
 		switch (sig) {
 			case SIGUSR1: {
+				Pthread_mutex_lock(&lk_stat);
 				if (file_stat!=NULL){
-					Pthread_mutex_lock(&lk_stat);
 					printStats(file_stat);
-					Pthread_mutex_unlock(&lk_stat);
 				}
+				Pthread_mutex_unlock(&lk_stat);
 				break;
 			}
 			case SIGUSR2: {
@@ -261,7 +261,12 @@ void* sig_handler(){
 				printf("-----handler si sveglia e elimina tutto----\n");
 				fflush(stdout);
 				
-				if (file_stat!=NULL) printStats(file_stat);
+				if (file_stat!=NULL){
+					Pthread_mutex_lock(&lk_stat);
+					printStats(file_stat);
+					Pthread_mutex_unlock(&lk_stat);
+				}
+				
 
 				aus_sig=0;
 				break;
