@@ -7,7 +7,6 @@ typedef struct nodo {
 
 typedef struct coda_fd{
 	int lenght;
-	nodo* testa;
 	nodo* testa_attesa;
 	nodo* coda;
 }coda_fd;

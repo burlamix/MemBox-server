@@ -23,8 +23,7 @@ int sendReply(long fd, message_hdr_t *hdr);
  *
  * @returns la dimensione in caso di successo,-1 in caso di fallimento
  */
-int gest_op(message_t* mex,long fd, icl_hash_t* repository,struct statistics  *mboxStats, pthread_mutex_t lk_stat );
-
+static SizeofRep(icl_hash_t* repo);
 /**
  * @function put_op
  * @brief funzione per la gestione dell'inserimento di un oggetto nel repository
@@ -37,7 +36,7 @@ int gest_op(message_t* mex,long fd, icl_hash_t* repository,struct statistics  *m
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-int put_op(message_t* mex, icl_hash_t* repository,long fd,struct statistics  *mboxStats, pthread_mutex_t lk_stat );
+static int put_op(message_t* mex, icl_hash_t* repository,long fd,struct statistics  *mboxStats, pthread_mutex_t lk_stat );
 
 /**
  * @function update_op
@@ -51,7 +50,7 @@ int put_op(message_t* mex, icl_hash_t* repository,long fd,struct statistics  *mb
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-int update_op(message_t* mex ,icl_hash_t* repository, long fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat );
+static int update_op(message_t* mex ,icl_hash_t* repository, long fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat );
 
 /**
  * @function remove_op
@@ -65,7 +64,7 @@ int update_op(message_t* mex ,icl_hash_t* repository, long fd, struct statistics
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-int remove_op(icl_hash_t* repository, membox_key_t key,long fd,struct statistics  *mboxStats, pthread_mutex_t lk_stat );
+static int remove_op(icl_hash_t* repository, membox_key_t key,long fd,struct statistics  *mboxStats, pthread_mutex_t lk_stat );
 
 /**
  * @function get_op
@@ -79,7 +78,7 @@ int remove_op(icl_hash_t* repository, membox_key_t key,long fd,struct statistics
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-int get_op(icl_hash_t* repository, membox_key_t key,long fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat );
+static int get_op(icl_hash_t* repository, membox_key_t key,long fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat );
 
 /**
  * @function lock_op
@@ -91,7 +90,7 @@ int get_op(icl_hash_t* repository, membox_key_t key,long fd, struct statistics  
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-int lock_op(long fd,icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat );
+static int lock_op(long fd,icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat );
 
 /**
  * @function unlock_op
@@ -104,7 +103,7 @@ int lock_op(long fd,icl_hash_t* repository, struct statistics  *mboxStats, pthre
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-int unlock_op(long fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat );
+static int unlock_op(long fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat );
 
 /**
  * @function gest_op

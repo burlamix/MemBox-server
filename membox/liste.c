@@ -14,7 +14,6 @@ coda_fd* initcoda(){
 	coda_fd* c;
 	ec_null_c( c=malloc(sizeof(coda_fd)),"create coda", return NULL);
 	c->lenght=0;
-	c->testa=NULL;
 	c->testa_attesa=NULL;
 	c->coda=NULL;
 	return c;
@@ -34,7 +33,7 @@ coda_fd* initcoda(){
 	nodo* new;
 	ec_null_c(new= malloc(sizeof(nodo)), "create nodo", return NULL );
 	new->info=c;
-	if(n==NULL){
+	if(n==NULL){//coda vuota
 		new->prec=NULL;
 		new->next=NULL;
 	}else{
@@ -58,20 +57,19 @@ coda_fd* initcoda(){
   int delete (nodo* n){
 	if(n!=NULL){
 		nodo* aus;
-		if(n->prec==NULL && n->next==NULL){
+		if(n->prec==NULL && n->next==NULL){//solo un elemento
 			free(n);
 			return 0;
 		}
-		if(n->prec!=NULL && n->next!=NULL){
+		if(n->prec!=NULL && n->next!=NULL){//sia il precedente che il successivo
 			aus=n->next;
 			aus->prec=n->prec;
 			n->prec->next=aus;
 		}else{
-			if(n->prec==NULL)
+			if(n->prec==NULL)			//solo il successivo
 				n->next->prec=NULL;
-			else n->prec->next=NULL;
+			else n->prec->next=NULL;	//solo il precedente
 		}
-		fflush(stdout);
 		free(n);
 		return 0;
 	}
@@ -89,6 +87,7 @@ void delete_coda(nodo* n){
 	if(n!=NULL){
 		delete_coda(n->next);
 		delete_coda(n->prec);
+		//viene chiuso il fd della comunicazione
 		close(n->info);
 		free(n);
 	}
@@ -117,13 +116,14 @@ void delete_allfd(coda_fd* c){
  * @return 0 in caso di successo, -1 caso di errore
  */
  int delete_fd(coda_fd* c,nodo * n){
-	if( n== c->testa_attesa){
+	if( n== c->testa_attesa){//devo aggiornare da dove prendo le connessioni
 		c->testa_attesa=n->next;
 	}
-	if(n->next== NULL && c->coda==n){
+	if(n->next== NULL && c->coda==n){//devo aggiornare dove inserisco le connessioni
 		c->coda=n->prec;
 	}
-	close(n->info);
+	//viene chiuso il filedescriptor della connessione
+	ec_meno1_np(close(n->info), return -1);
 	ec_meno1_np(delete(n), return -1);
 	
 	c->lenght--;
@@ -143,10 +143,6 @@ int add_fd( coda_fd* c, int fd){
 
 	ec_null_np(c->coda = insert_incoda(c->coda,fd), return -1);
 	c->lenght++;
-	if(c->testa==NULL){
-		c->testa=c->coda;
-
-	}
 	if(c->testa_attesa==NULL){
 			c->testa_attesa= c->coda;
 	}

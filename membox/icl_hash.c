@@ -85,11 +85,12 @@ icl_hash_create( int nbuckets, int ss, int sbs, int mos){
 
     ht= (icl_hash_t*)malloc(sizeof(icl_hash_t));
     if(!ht) return NULL;
-
+    //inizializzo le informazioni della tabella hash
     ht->nbuckets = nbuckets;
     ht->StorageSize=ss;
     ht->StorageByteSize=sbs;
     ht->MaxObjSize=mos;
+
     if((aus=pthread_mutex_init(&ht->lk_repo, NULL))!=0) { free(ht); return NULL;}
     ht->repo_l=0;
     ht->fd=-1;
@@ -98,12 +99,14 @@ icl_hash_create( int nbuckets, int ss, int sbs, int mos){
     ht->job_c=0;
     if((aus=pthread_cond_init(&ht->cond_job,NULL))!=0) { free(ht); return NULL; }
     
-    
+    //alloco la lista delle liste di trabocco
     ht->buckets = (icl_entry_t**)malloc(nbuckets * sizeof(icl_entry_t*));
     if(!ht->buckets) {free(ht); return NULL;}
+    //alloco la lista delle variabili di mutua esclusione e di condizione
     ht->lkline = (icl_entry_lk*)malloc(nbuckets * sizeof(icl_entry_lk));
     if(!ht->lkline) {free(ht); free(ht->buckets); return NULL; }
 
+    //inizializzo variabili di condizione e mutua esclusione
     for(i=0;i<ht->nbuckets;i++){
         ht->buckets[i] = NULL;
         if((aus=pthread_cond_init(&(ht->lkline[i].cond_line),NULL))!=0) {free(ht); free(ht->buckets); free(ht->lkline);return NULL;}
@@ -134,16 +137,16 @@ icl_hash_find(icl_hash_t *ht, unsigned long key){
     unsigned int hash_val;
 
     if(!ht ) return NULL;
-   
+    //calcolo il valore della chiave
     hash_val= hash_pjw((void*)&key)% ht->nbuckets;
-
+    //acquisisco la mutua esclusione sulla lista di trabocco
     Pthread_mutex_lock(&ht->lkline[hash_val].mutex_line);
     while(ht->lkline[hash_val].c!=-1){
             Pthread_cond_wait(&ht->lkline[hash_val].cond_line,&ht->lkline[hash_val].mutex_line);
     }
     ht->lkline[hash_val].c=1;
     Pthread_mutex_unlock(&ht->lkline[hash_val].mutex_line);
-
+    //scorro lista di trabocco
     aus=NULL;
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next){
         if ( curr->key==key){
@@ -151,7 +154,7 @@ icl_hash_find(icl_hash_t *ht, unsigned long key){
             break;
         }
     }
-
+    //permetto di fare operazione sulla riga a chi è in attesa
     Pthread_mutex_lock(&ht->lkline[hash_val].mutex_line);
     ht->lkline[hash_val].c=-1;
     Pthread_cond_signal(&ht->lkline[hash_val].cond_line);
@@ -182,12 +185,12 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
 
     if(!ht) return -3;
 
-   
+   //calcolo la chiave
     hash_val=hash_pjw((void*)&key)% ht->nbuckets;
 
     printf("prima attesa insert\n");
             fflush(stdout);
-
+    //acquisisco la mutua esclusione sulla lista di trabocco
     Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
     
     while(ht->lkline[hash_val].c!=-1){
@@ -212,6 +215,7 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
                 ht->buckets[hash_val] = curr;
             }
     }
+    //permetto di fare operazione sulla riga a chi è in attesa
     Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
     ht->lkline[hash_val].c=-1;
     Pthread_cond_signal(&(ht->lkline[hash_val].cond_line));

@@ -8,9 +8,6 @@
 
 #include "err_man.h"
 
-int cleanall(void* ciao){
-	return 0;
-}
 
 /**
  * @function Pthread_mutex_lock
@@ -61,18 +58,9 @@ void Pthread_mutex_unlock(pthread_mutex_t* mutex) {
  *
  */
 void Pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
-	
-	int err=0;
-	int i=0;
-	while( (err=pthread_cond_wait(cond,mutex))!=0 && i<10){
-		i++;
-	}
-	
-	if(i==10){
+	if(pthread_cond_wait(cond,mutex)!=0)
 		abort();
-		//printf("error in cond wait:%d",err); 
-		//ec_meno1(kill(0, SIGUSR2),"kill");
-	}
+	
 }
 /**
  * @function Pthread_cond_signal
@@ -82,16 +70,7 @@ void Pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
  *
  */
 void Pthread_cond_signal(pthread_cond_t* cond) {
-	
-	int err=0;
-	int i=0;
-	while((err=pthread_cond_signal(cond))!=0 && i<10){
-		i++;
-	}
-	
-	if(i==10){
+	if(pthread_cond_signal(cond)!=0){
 		abort();
-		//printf("error in cond signal:%d",err); 
-		//ec_meno1(kill(0, SIGUSR2),"kill");
 	}
 }
