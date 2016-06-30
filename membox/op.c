@@ -46,6 +46,7 @@ int SizeOfRep( icl_hash_t* repo){
     if(!repo) return -1;
 
     size=0;
+    //per ciascuna entry si scorre tutta la lista di trabocco
     for(i=0; i<repo->nbuckets; i++) {
         bucket = repo->buckets[i];
         for(curr=bucket; curr!=NULL;curr=curr->next) {
@@ -74,6 +75,8 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
   memset(&risp, 0, sizeof(message_hdr_t));
   message_data_t *obj;
   int op;
+
+  //viene aggiornato il numero di put e alcuni valori delle statistiche vengono salvati in delle variabili locali
   Pthread_mutex_lock(&lk_stat);
   mboxStats->nput++;
   int newdim= mboxStats->current_size + (new_data->data.len);
@@ -98,7 +101,7 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
     ec_meno1_np(sendReply( fd, &risp), return -1);
     return 0;
   } 
-
+  //si controlla la dimensione massima dell'oggetto
   if (repository->MaxObjSize!=0 && new_data->data.len > repository->MaxObjSize){
     risp.op= OP_PUT_SIZE;
     Pthread_mutex_lock(&lk_stat);
@@ -107,7 +110,7 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
     ec_meno1_np(sendReply( fd, &risp), return -1);
     return 0;
   }
-
+  //creazione dell'oggetto da inserire nel repository
   ec_null_c(obj=calloc(1,sizeof(message_data_t)),"impossibile allocare oggetto",op=-1);
   if(obj!=NULL){
     obj->len=new_data->data.len;
@@ -115,6 +118,8 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
     memcpy(obj->buf,new_data->data.buf, new_data->data.len);
     op=icl_hash_insert( repository, new_data->hdr.key, obj);
   }
+  //in base all'esito dell'inserimento vengono aggiornate le statistiche e 
+  //settato il messaggio di risposta
   switch (op){
     case 0 :
       risp.op= OP_OK;
@@ -160,10 +165,11 @@ int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statist
  */
 int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat){
 
+  //viene cercato l'oggetto da aggiornare nella tabella hash
   message_data_t* dato = (message_data_t*) icl_hash_find( repository, new_mex->hdr.key);
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
-  
+  //caso in cui l'oggetto non è presente
   if(dato==NULL){
     risp.op= OP_UPDATE_NONE;
     Pthread_mutex_lock(&lk_stat);
@@ -173,6 +179,7 @@ int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statist
     ec_meno1_np(sendReply( fd, &risp), return -1);
     return 0;
   }
+  //caso in cui non si ha corrispondenza tra le dimensioni
   if (dato->len != new_mex->data.len){
     risp.op= OP_UPDATE_SIZE; 
     Pthread_mutex_lock(&lk_stat);
@@ -180,14 +187,14 @@ int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statist
     mboxStats->nupdate_failed++;
 	  Pthread_mutex_unlock(&lk_stat);
   }else{
+    //aggiornamento
     memcpy((void*)dato->buf,(void*)new_mex->data.buf,dato->len);  // qui non va fatto così ma senno
-
     risp.op= OP_OK;
     Pthread_mutex_lock(&lk_stat);
     mboxStats->nupdate++;
 	  Pthread_mutex_unlock(&lk_stat);
   }
-  
+  //invio della risposta al client
   ec_meno1_np(sendReply( fd, &risp), return -1);
 
   return 0;
@@ -208,11 +215,13 @@ int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statist
  */
 int remove_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat){
 
+  //viene rimosso l'oggetto dalla repository
   int op= icl_hash_delete( repository, key);
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
-
+  //controllo esito eliminazione e aggiornamento statistiche
   if (op>=0){
+    //caso in cui oggetto è presete e eliminazione va a buon fine
   	risp.op= OP_OK;
     Pthread_mutex_lock(&lk_stat);
     mboxStats->nremove++;
@@ -220,12 +229,14 @@ int remove_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics
     mboxStats->current_objects--;
 	Pthread_mutex_unlock(&lk_stat);
 	}else{
+    //caso in cui oggetto da rimuore non presente
     	risp.op=OP_REMOVE_NONE;
     	Pthread_mutex_lock(&lk_stat);
     	mboxStats->nremove++;
     	mboxStats->nremove_failed++;
 		Pthread_mutex_unlock(&lk_stat);
   }
+  //invio risposta al client
   ec_meno1_np(sendReply( fd, &risp), return -1);
   return 0;
 }
@@ -245,14 +256,15 @@ int remove_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics
 int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat  ){
 
     message_data_t* dato;
-
+    //viene cercato l'oggetto con chiave richiesta
     dato= (message_data_t*) icl_hash_find( repository, key);
 
     message_hdr_t risp;
     memset(&risp, 0, sizeof(message_hdr_t));
 
     risp.key=key;
-    if (dato==NULL){
+    //gestione dell'esito dell'operazione
+    if (dato==NULL){//caso in cui l'oggetto non è presente
      	risp.op=OP_GET_NONE;
       	Pthread_mutex_lock(&lk_stat);
     	mboxStats->nget++;
@@ -265,7 +277,9 @@ int get_op(icl_hash_t* repository, membox_key_t key,int fd, struct statistics  *
 		  Pthread_mutex_unlock(&lk_stat);
 
     }
+    //invio della risposta di esito dell'operazione al client
     ec_meno1_np(sendReply( fd, &risp), return -1);
+    //in caso di esito positivo invio del dato
     if(risp.op==OP_OK){
       ec_meno1_np(write(fd, &(dato->len ),sizeof(int)), return -1);
       char * aus;
@@ -296,6 +310,7 @@ int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthrea
   memset(&risp, 0, sizeof(message_hdr_t));
 
   Pthread_mutex_lock(& repository->lk_repo);
+  //ulteriore controllo che in realà non è necessario in quanto se la lock è presa la gestione avviene in gest_op
   if(repository->repo_l){//caso in cui la lock è già presa
       Pthread_mutex_unlock(& repository->lk_repo);
 
@@ -307,11 +322,13 @@ int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthrea
 	  Pthread_mutex_unlock(&lk_stat);
 
   }else{
+    //viene bloccato il repository settando repo_l e fd in modo che nuove richieste di operazioni non siano accettate
     repository->repo_l=1;
     repository->fd = fd;
     pthread_mutex_unlock(& repository->lk_repo);
 
     pthread_mutex_lock(&(repository->lk_job_c));
+    //si attende che terminino le operazioni sulla repository
     while(repository->job_c>1){
       printf("\nvalore di job =%d\n",repository->job_c);
 
@@ -320,7 +337,7 @@ int lock_op(int fd,icl_hash_t* repository, struct statistics  *mboxStats, pthrea
       printf("\nvalore di job =%d\n",repository->job_c);
 
     pthread_mutex_unlock(& repository->lk_job_c);
-
+     //il repository è stato bloccato, viene mandata risposta al client e aggiornate le statistiche
     risp.op = OP_OK;
     ec_meno1_np(sendReply( fd, &risp), return -1);
     Pthread_mutex_lock(&lk_stat);
@@ -378,7 +395,7 @@ int unlock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats, pth
  */
 int gest_op(message_t * mex,long fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat){
 
-   int ris_op;
+   int ris_op=0;
    if(mex->hdr.op == PUT_OP || mex->hdr.op == UPDATE_OP ){
         readData(fd,&mex->data);
       }else{
@@ -396,7 +413,7 @@ int gest_op(message_t * mex,long fd, icl_hash_t* repository, struct statistics  
         Pthread_mutex_unlock(&repository->lk_job_c);
         Pthread_mutex_unlock(&(repository->lk_repo));
 
-
+        //viene eseguita l'operazione richiesta
   switch (mex->hdr.op) {
 
       case PUT_OP:
@@ -442,7 +459,35 @@ int gest_op(message_t * mex,long fd, icl_hash_t* repository, struct statistics  
             Pthread_cond_signal(&(repository->cond_job));//nel caso nessuno abbia chiesto la lock la signal andrà persa
         Pthread_mutex_unlock(&(repository->lk_job_c));
       }else{
+        //aggiorno le statistiche con i fallimenti 
+        Pthread_mutex_lock(&lk_stat);
+        switch (mex->hdr.op) {
 
+            case PUT_OP:
+               mboxStats->nput_failed++;
+               break;
+
+            case UPDATE_OP:
+               mboxStats->nupdate_failed++;
+               break;
+
+            case REMOVE_OP:
+                mboxStats->nremove_failed++;
+                break;
+            
+            case GET_OP:
+                mboxStats->nget_failed++;
+                break;
+
+            case LOCK_OP:
+                mboxStats->nlock_failed++;
+                break;
+            default:
+                fprintf(stderr, "Invalid request\n");
+              return -1;
+      }
+      Pthread_mutex_unlock(&lk_stat);
+        //risposta al client di operazione non concessa perchè il repository è bloccato
         Pthread_mutex_unlock(&(repository->lk_repo));
         message_hdr_t *risp=malloc(sizeof(message_hdr_t));
         risp->op = OP_LOCKED;
