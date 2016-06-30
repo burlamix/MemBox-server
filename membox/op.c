@@ -31,31 +31,7 @@ int sendReply(long fd, message_hdr_t *hdr) {
   return 0;
 }
 
-/**
- * @function SizeofRep
- * @brief calcola la dimensione della repository
- *
- * @param repo repository della quale si deve calcolare la dimensione
- *
- * @returns la dimensione in caso di successo,-1 in caso di fallimento
- */
-static int SizeOfRep( icl_hash_t* repo) {
-  icl_entry_t *bucket, *curr;
-  int i, size;
 
-  if (!repo) return -1;
-
-  size = 0;
-  //per ciascuna entry si scorre tutta la lista di trabocco
-  for (i = 0; i < repo->nbuckets; i++) {
-    bucket = repo->buckets[i];
-    for (curr = bucket; curr != NULL; curr = curr->next) {
-      size = size + sizeof(curr->data);
-    }
-  }
-
-  return size;
-}
 
 /**
  * @function put_op
@@ -69,7 +45,7 @@ static int SizeOfRep( icl_hash_t* repo) {
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-static int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statistics *mboxStats, pthread_mutex_t lk_stat ) {
+int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct statistics *mboxStats, pthread_mutex_t lk_stat ) {
 
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
@@ -163,7 +139,7 @@ static int put_op(message_t* new_data,  icl_hash_t* repository,  int fd, struct 
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-static int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat) {
+ int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat) {
 
   //viene cercato l'oggetto da aggiornare nella tabella hash
   message_data_t* dato = (message_data_t*) icl_hash_find( repository, new_mex->hdr.key);
@@ -213,7 +189,7 @@ static int update_op(message_t* new_mex, icl_hash_t* repository, int fd, struct 
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-static int remove_op(icl_hash_t* repository, membox_key_t key, int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat) {
+int remove_op(icl_hash_t* repository, membox_key_t key, int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat) {
 
   //viene rimosso l'oggetto dalla repository
   int op = icl_hash_delete( repository, key);
@@ -253,7 +229,7 @@ static int remove_op(icl_hash_t* repository, membox_key_t key, int fd, struct st
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-static int get_op(icl_hash_t* repository, membox_key_t key, int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat  ) {
+int get_op(icl_hash_t* repository, membox_key_t key, int fd, struct statistics  *mboxStats, pthread_mutex_t lk_stat  ) {
 
   message_data_t* dato;
   //viene cercato l'oggetto con chiave richiesta
@@ -305,7 +281,7 @@ static int get_op(icl_hash_t* repository, membox_key_t key, int fd, struct stati
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-static int lock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ) {
+int lock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ) {
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
 
@@ -358,7 +334,7 @@ static int lock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats
  *
  * @returns 0 in caso di successo,-1 in caso di fallimento
  */
-static int unlock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ) {
+int unlock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat ) {
 
   message_hdr_t risp;
   memset(&risp, 0, sizeof(message_hdr_t));
