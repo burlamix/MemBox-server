@@ -21,17 +21,6 @@ typedef struct coda_fd{
 coda_fd* initcoda();
 
 /**
- * @function insert_intesta
- * @brief crea un nuovo nodo e lo inserisce prima del nodo passato come parametro
- *
- * @param n   nodo prima del quale verrà inserito il nodo appena creato
- * @param c   info contenuta nel nuovo nodo
- *
- * @return il puntatore al nuovo nodo in caso di successo, ritorna NULL e setta ernno in caso di errore
- */
-nodo* insert_intesta( nodo* n, int c );
-
-/**
  * @function insert_incoda
  * @brief crea un nuovo nodo e lo inserisce dopo il nodo passato come parametro
  *
@@ -40,7 +29,7 @@ nodo* insert_intesta( nodo* n, int c );
  *
  * @return il puntatore al nuovo nodo in caso di successo, ritorna NULL e setta ernno in caso di errore
  */
-nodo* insert_incoda(nodo*n,int c);
+ nodo* insert_incoda(nodo*n,int c);
 
 /**
  * @function delete
@@ -50,7 +39,7 @@ nodo* insert_incoda(nodo*n,int c);
  *
  * @return 0 in caso di successo, -1 caso di errore
  */
-int delete (nodo* n);
+ int delete (nodo* n);
 
 /**
  * @function delete_coda
@@ -59,7 +48,7 @@ int delete (nodo* n);
  * @param c  puntatore ad un nodo qualsiasi della lista;
  *
  */
-void delete_coda(nodo* n);
+ void delete_coda(nodo* n);
 
 /**
  * @function delete_allfd

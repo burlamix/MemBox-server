@@ -20,29 +20,6 @@ coda_fd* initcoda(){
 	return c;
 }
 
-/**
- * @function insert_intesta
- * @brief crea un nuovo nodo e lo inserisce prima del nodo passato come parametro
- *
- * @param n   nodo prima del quale verrà inserito il nodo appena creato
- * @param c   info contenuta nel nuovo nodo
- *
- * @return il puntatore al nuovo nodo in caso di successo, ritorna NULL e setta ernno in caso di errore
- */
-nodo* insert_intesta( nodo* n, int c ){
-	nodo* new;
-	ec_null_c(new= malloc(sizeof(nodo)), "create nodo", return NULL );
-	new->info=c;
-	if(n==NULL){
-		new->next=NULL;
-		new->prec=NULL;
-	}else{
-		new->prec=n->prec;
-		new->next=n;
-		n->prec=new;
-	}
-	return new;
-}
 
 /**
  * @function insert_incoda
@@ -53,7 +30,7 @@ nodo* insert_intesta( nodo* n, int c ){
  *
  * @return il puntatore al nuovo nodo in caso di successo, ritorna NULL e setta ernno in caso di errore
  */
-nodo* insert_incoda(nodo*n,int c){
+ nodo* insert_incoda(nodo*n,int c){
 	nodo* new;
 	ec_null_c(new= malloc(sizeof(nodo)), "create nodo", return NULL );
 	new->info=c;
@@ -78,7 +55,7 @@ nodo* insert_incoda(nodo*n,int c){
  *
  * @return 0 in caso di successo, -1 caso di errore
  */
- int delete (nodo* n){
+  int delete (nodo* n){
 	if(n!=NULL){
 		nodo* aus;
 		if(n->prec==NULL && n->next==NULL){
@@ -175,6 +152,3 @@ int add_fd( coda_fd* c, int fd){
 	}
 	return 0;
 }
-
-
-
