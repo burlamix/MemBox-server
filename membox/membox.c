@@ -194,59 +194,19 @@ void* worker(){
 		printf(" l'fd della nuova connessione è %d\n",fd);	fflush(stdout);
 		
 
-		i=0;
 		//finche ricevo una richiesta e non è settato il flag continuo a eseguire le richieste del client
 		while( i_flag==0 && readHeader(fd, &dati->hdr))// e poi ci infiliamo una read
 		{	
-			//se la richesta è di put e di update leggo la parte data del messaggio
-			if(dati->hdr.op == PUT_OP || dati->hdr.op == UPDATE_OP ){
-				readData(fd,&dati->data);
-			}else{
-				printf("********************read non legge! \n" );
-			}
-					
-			printf("i=%d, worker esegue una richiesta di %d del client su fd = %d, ",i,dati->hdr.op,fd);	fflush(stdout);
-			
-
-			//controlla che la repository non sia bloccata da una operazione LOCK
-			Pthread_mutex_lock(&(repository->lk_repo));
-				if(repository->repo_l == 0 || repository->fd == fd){
-				
-				//se la repository non è bloccata viene incrementato il valore che identifica il numero di operazioni in esecuzione sulla repository
-				Pthread_mutex_lock(&(repository->lk_job_c));
-					repository->job_c++;							
-				Pthread_mutex_unlock(&repository->lk_job_c);
-				Pthread_mutex_unlock(&(repository->lk_repo));
-
 				//viene eseguita l'operazione richiesta
 				ec_meno1_c(ris_op = gest_op(dati,fd, repository, &mboxStats, lk_stat), "operazione non identificata", free(dati->data.buf);break);
-				printStats(stdout);
-				printf(" risultato dell op=%d\n",ris_op);
-
-				//posso liberare il buffer che verrà riallocato nuovamente alla prossima readData
-				if(dati->hdr.op == PUT_OP || dati->hdr.op == UPDATE_OP ){
-					free(dati->data.buf);
-				}	
-					
-
-				Pthread_mutex_lock(&(repository->lk_job_c));
-					repository->job_c--;
-
-					//nel caso in cui non ci siano più lavori in esecuzione allora viene attivata la lock
-					if(repository->job_c==0) 
-						Pthread_cond_signal(&(repository->cond_job));//nel caso nessuno abbia chiesto la lock la signal andrà persa
-				Pthread_mutex_unlock(&(repository->lk_job_c));
-				i++;
-
-			}else{
-				//se la repository è bloccata rispondo con l'opportuno messaggio
-				Pthread_mutex_unlock(&(repository->lk_repo));
- 				message_hdr_t *risp=malloc(sizeof(message_hdr_t));
-				risp->op = OP_LOCKED;
-       			sendReply(fd,risp);
-
-			}
 		}	
+		
+		Pthread_mutex_lock(&(repository->lk_repo));
+		if(repository->repo_l == 1 && repository->fd == fd){
+			repository->repo_l == 0;
+		}
+		Pthread_mutex_unlock(&(repository->lk_repo));
+
 		//terminate le richieste del client elimino il fd dall coda e aggiorno le statistiche
 		Pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);

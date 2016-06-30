@@ -378,6 +378,23 @@ int unlock_op(int fd, icl_hash_t* repository, struct statistics  *mboxStats, pth
 int gest_op(message_t * mex,long fd, icl_hash_t* repository, struct statistics  *mboxStats, pthread_mutex_t lk_stat){
 
    int ris_op;
+   if(mex->hdr.op == PUT_OP || mex->hdr.op == UPDATE_OP ){
+        readData(fd,&mex->data);
+      }else{
+        printf("********************read non legge! \n" );
+      }
+        
+
+    //controlla che la repository non sia bloccata da una operazione LOCK
+  Pthread_mutex_lock(&(repository->lk_repo));
+  if(repository->repo_l == 0 || repository->fd == fd){
+        
+        //se la repository non è bloccata viene incrementato il valore che identifica il numero di operazioni in esecuzione sulla repository
+        Pthread_mutex_lock(&(repository->lk_job_c));
+          repository->job_c++;              
+        Pthread_mutex_unlock(&repository->lk_job_c);
+        Pthread_mutex_unlock(&(repository->lk_repo));
+
 
   switch (mex->hdr.op) {
 
@@ -407,6 +424,31 @@ int gest_op(message_t * mex,long fd, icl_hash_t* repository, struct statistics  
       default:
         fprintf(stderr, "Invalid request\n");
         return -1;
+      }
+
+       printStats(stdout);
+        printf(" risultato dell op=%d\n",ris_op);
+        //posso liberare il buffer che verrà riallocato nuovamente alla prossima readData
+        if(mex->hdr.op == PUT_OP || mex->hdr.op == UPDATE_OP ){
+          free(mex->data.buf);
+      } 
+          
+
+        Pthread_mutex_lock(&(repository->lk_job_c));
+          repository->job_c--;
+
+          //nel caso in cui non ci siano più lavori in esecuzione allora viene attivata la lock
+          if(repository->job_c==0) 
+            Pthread_cond_signal(&(repository->cond_job));//nel caso nessuno abbia chiesto la lock la signal andrà persa
+        Pthread_mutex_unlock(&(repository->lk_job_c));
+      }else{
+
+        Pthread_mutex_unlock(&(repository->lk_repo));
+        message_hdr_t *risp=malloc(sizeof(message_hdr_t));
+        risp->op = OP_LOCKED;
+        ec_meno1_np(sendReply( fd, risp), return -1);
+        free(risp);
+
       }
 
   return ris_op;     
