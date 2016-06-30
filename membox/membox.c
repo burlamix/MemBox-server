@@ -44,16 +44,15 @@
  *
  */
 struct statistics  mboxStats = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+//file delle statistiche
 FILE* file_stat;
-//_______________________________________________________________________________________________________strutture_________________________________
 
-//coda dei fd relativi al socket
+//coda di file descriptor utilizzata per la sincronizzazione dei vari thread worker e dispatcher
 coda_fd* coda_conn;
 
 //repository
 icl_hash_t * repository; 
 
-//_________________________________________________________________________________________________variabili_di _codizione_______________________________________
 //variabili di mutua esclusione e di condizione per l'accesso alla coda dei fd relativi al socket
 pthread_cond_t cond_nuovolavoro = PTHREAD_COND_INITIALIZER;
 
@@ -61,48 +60,58 @@ pthread_mutex_t lk_conn = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t lk_stat = PTHREAD_MUTEX_INITIALIZER;
 
-//_____________________________________________________________________________cose da finire___________________________________________________________
 
+// struttura delle variabili passate da parse
 var_conf v_configurazione;
+
 //variabili e_flag che servono per sincronizzare sig_handler con tutti gli altri thread
+//serve per far terminare tutto le richieste di un client a un worker e poi teminare
 volatile sig_atomic_t e_flag = 0;
+//serve per far terminare immediatamente i woker una volta terminata l'operazione
 volatile sig_atomic_t i_flag = 0;
+
 //il fd della socket come variabile globale perchè è necessario bloccarla quando arriva segnale sigusr2
 int fd_skt;
 
-//________________________________________________________________________________________________________________________________________
 
 
 
-
-
-
+/**
+ * @function dispatcher
+ * @brief gestisce le richieste di connessione da parte dei client
+ *
+ * */
 void *dispatcher()
 {
 	printf("\n DISPATCHER PARTITO \n");fflush(stdout);// da eliminare
+
 
 	int fd_c, aus;
 	struct sockaddr_un sa;
 
 
+	(void) unlink(v_configurazione.UnixPath);	
 
-	(void) unlink(v_configurazione.UnixPath);															// sistemo l'indirizzo 
+	// sistemo la soket
 	ec_null_ex(strncpy(sa.sun_path, v_configurazione.UnixPath,UNIX_PATH_MAX), "impossibile creare path");		 
 	sa.sun_family = AF_UNIX;
-
 	ec_meno1_ex(fd_skt=socket(AF_UNIX,SOCK_STREAM,0),"impossibile creare socket");		// preparo il socket 
 	ec_meno1_ex(bind( fd_skt , (struct sockaddr *) &sa , sizeof(sa) ), "impossibile assegnare indirizzo a socket");
 	ec_meno1_ex(listen(fd_skt,SOMAXCONN),"impossibile accettare connessioni");
 
+	//finche non è stato mandato un sengnale di terminazione continuo ad accettare connessioni
 	while(e_flag==0 && i_flag==0){
+
 			aus=0;
 			ec_meno1_c(fd_c=accept(fd_skt,NULL,0), "connessione fallita", break);
 
 			Pthread_mutex_lock(&lk_conn);
-			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ //si possono ancora accettare connessioni
-				Pthread_mutex_unlock(&lk_conn);
-				//fallisce una connessione e buttiamo giù tutto?
 
+			//si possono ancora accettare connessioni
+			if( v_configurazione.MaxConnections-(coda_conn->lenght)>0){ 
+				Pthread_mutex_unlock(&lk_conn);
+
+				//fallisce una connessione e buttiamo giù tutto?
 				printf("\n\nnuova connessione accettata -> si procede all'inserimento del fd nella lista\n");
 
 				Pthread_mutex_lock(&lk_conn);
@@ -115,8 +124,9 @@ void *dispatcher()
 				aus=-1;
 			}
 			if(aus!=0){
+				// se il numero di connessioni gestibili è raggiunto rispondo con operazione fallita
 				message_t fail;
-				fail.hdr.op = OP_FAIL; 			//da definire poi un apposito messaggio per il numero massimo di connessioni raggiunto
+				fail.hdr.op = OP_FAIL; 			
 				ec_meno1(sendRequest(fd_c, &fail),"impossibile inviare messaggio");  
 			}
 
@@ -125,8 +135,7 @@ void *dispatcher()
 	ec_meno1_ex(close(fd_skt),"impossibile chiudere socket");
 	ec_meno1_ex(unlink(v_configurazione.UnixPath),"errore di unlink");
 
-	//sveglio tutti i worker che sono in attesa sulla coda delle connessioni
-	//altrimenti si bloccano tutti e non verranno riattivati più dato che le connessioni da prendere sono finite;
+	//sveglio tutti i worker che sono in attesa sulla coda delle connessioni così che si accorgano che devono teminare
 	Pthread_mutex_lock(&lk_conn);
 	pthread_cond_broadcast(&cond_nuovolavoro);
 	Pthread_mutex_unlock(&lk_conn);
@@ -139,6 +148,11 @@ void *dispatcher()
 	
 }
 
+/**
+ * @function worker
+ * @brief gestisce le richieste di operazione dei client
+ *
+ * */
 void* worker(){
 
 	printf("\n WORKER PARTITO \n");fflush(stdout); //da eliminare
@@ -147,16 +161,20 @@ void* worker(){
 	int fd;
 	int i;
 	int ris_op;
+	//struttura che serve per riceverei i messaggi
 	message_t *dati =malloc(sizeof(message_t));
 
-	while(e_flag==0){
+
+	while(i_flag==0){
 	Pthread_mutex_lock(&lk_conn);
+		//nel finche non è settato uno dei due flag o non c'è nessun lavoro da svolgere attende
 		while(e_flag==0 && i_flag==0 && coda_conn->testa_attesa==NULL){//verifica la presenza di nuovi lavori
 			printf("testa attesa è nulla -> il worker si sospende\n");	fflush(stdout);
 
 			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
 		}
 
+		// se viene svegliato ma uno dei due flag è settato, significa che deve terminare quindi interrompe il ciclo
 		if(e_flag!=0 && i_flag!=0) {Pthread_mutex_unlock(&lk_conn);break;}
 
 		printf("\n\n\n\n__________________________________inizio______________________________________________________________________");	fflush(stdout);
@@ -177,8 +195,10 @@ void* worker(){
 		
 
 		i=0;
-		while(readHeader(fd, &dati->hdr) && i_flag==0)// e poi ci infiliamo una read
+		//finche ricevo una richiesta e non è settato il flag continuo a eseguire le richieste del client
+		while( i_flag==0 && readHeader(fd, &dati->hdr))// e poi ci infiliamo una read
 		{	
+			//se la richesta è di put e di update leggo la parte data del messaggio
 			if(dati->hdr.op == PUT_OP || dati->hdr.op == UPDATE_OP ){
 				readData(fd,&dati->data);
 			}else{
@@ -202,10 +222,11 @@ void* worker(){
 				ec_meno1_c(ris_op = gest_op(dati,fd, repository, &mboxStats, lk_stat), "operazione non identificata", free(dati->data.buf);break);
 				printStats(stdout);
 				printf(" risultato dell op=%d\n",ris_op);
+
 				//posso liberare il buffer che verrà riallocato nuovamente alla prossima readData
 				if(dati->hdr.op == PUT_OP || dati->hdr.op == UPDATE_OP ){
 					free(dati->data.buf);
-			}	
+				}	
 					
 
 				Pthread_mutex_lock(&(repository->lk_job_c));
@@ -216,8 +237,9 @@ void* worker(){
 						Pthread_cond_signal(&(repository->cond_job));//nel caso nessuno abbia chiesto la lock la signal andrà persa
 				Pthread_mutex_unlock(&(repository->lk_job_c));
 				i++;
-			}else{
 
+			}else{
+				//se la repository è bloccata rispondo con l'opportuno messaggio
 				Pthread_mutex_unlock(&(repository->lk_repo));
  				message_hdr_t *risp=malloc(sizeof(message_hdr_t));
 				risp->op = OP_LOCKED;
@@ -225,6 +247,7 @@ void* worker(){
 
 			}
 		}	
+		//terminate le richieste del client elimino il fd dall coda e aggiorno le statistiche
 		Pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);
 		mboxStats.concurrent_connections--;
@@ -243,6 +266,11 @@ void* worker(){
 	pthread_exit((void *) 0);		
 }
 
+/**
+ * @function sig_handler
+ * @brief gestisce i segnali
+ *
+ * */
 void* sig_handler(){
 	sigset_t set;
 	int sig, aus_sig;
@@ -293,7 +321,12 @@ void* sig_handler(){
 
 
 
-
+/**
+ * @function main
+ *
+ * @brief gestisce le strutture globali e la creazione dei thread
+ *
+ * */
 int main(int argc, char *argv[]) {
 	sigset_t set;
 	
@@ -315,7 +348,7 @@ int main(int argc, char *argv[]) {
 	pthread_t *threadinpool;
 	pthread_t disp;
 	
-	
+	//inizializzo la coda di file descriptor
 	coda_conn=initcoda();
 	if(errno!=0){
 		printf("impossibile creare repository\n");
@@ -331,22 +364,23 @@ int main(int argc, char *argv[]) {
 		scanf("%s",argv[2]);
 		i++;
 	}
-
+	//se sono riuscito ad avere un file di configurazione corretto
 	if(i<5){
 
 		if (v_configurazione.StatFileName!=NULL){
 			ec_null(file_stat=fopen(v_configurazione.StatFileName,"w+"),"impossibile creare file statistiche"); 
 		}
+
 		threadinpool = malloc(v_configurazione.ThreadsInPool*(sizeof(pthread_t)));
 
 		repository = icl_hash_create( NB, v_configurazione.StorageSize, v_configurazione.StorageByteSize, v_configurazione.MaxObjSize);
 
+		//creo tutti i thread
 		pthread_create(&handler,NULL,sig_handler,NULL);
 		pthread_create(&disp, NULL, dispatcher,NULL);
 		for(int i=0;i<v_configurazione.ThreadsInPool;i++){
-			pthread_create(&threadinpool[i],NULL,worker, NULL);
-			// pthread_detach(threadinpool[i]);
 
+			pthread_create(&threadinpool[i],NULL,worker, NULL);
 		}
 		
 
@@ -365,6 +399,7 @@ int main(int argc, char *argv[]) {
 		Pthread_mutex_lock(&lk_conn);
 				delete_allfd(coda_conn);
 		Pthread_mutex_unlock(&lk_conn);
+		
 		if(file_stat!=NULL && fclose(file_stat)!=0) perror("impossibile chiudere file statistiche");
 	}
 	
