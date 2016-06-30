@@ -169,7 +169,8 @@ void* worker() {
 	int fd;
 	int ris_op;
 	//struttura che serve per riceverei i messaggi
-	message_t *dati = malloc(sizeof(message_t));
+	message_t *dati;
+	ec_null_ex( (dati = malloc(sizeof(message_t))) ,"malloc");
 
 	//Pthread_mutex_lock(&lk_eflag);
 	Pthread_mutex_lock(&lk_iflag);
@@ -394,7 +395,7 @@ int main(int argc, char *argv[]) {
 			ec_null(file_stat = fopen(v_configurazione.StatFileName, "w+"), "impossibile creare file statistiche");
 		}
 
-		threadinpool = malloc(v_configurazione.ThreadsInPool * (sizeof(pthread_t)));
+			ec_null_ex( threadinpool = malloc(v_configurazione.ThreadsInPool * (sizeof(pthread_t))), "malloc" );
 
 		repository = icl_hash_create( NUMBER_OF_BUCKET, v_configurazione.StorageSize, v_configurazione.StorageByteSize, v_configurazione.MaxObjSize);
 

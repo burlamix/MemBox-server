@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 
+#define _XOPEN_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,13 +18,13 @@
  */
 void Pthread_mutex_lock(pthread_mutex_t* mutex) {
 
-	int err=0;
-	int i=0;
-	while( (err=pthread_mutex_lock(mutex))!=0 && i<10){
+	int err = 0;
+	int i = 0;
+	while ( (err = pthread_mutex_lock(mutex)) != 0 && i < 10) {
 		i++;
 	}
 
-	if(i==10){
+	if (i == 10) {
 		abort();
 	}
 }
@@ -36,16 +36,16 @@ void Pthread_mutex_lock(pthread_mutex_t* mutex) {
  *
  */
 void Pthread_mutex_unlock(pthread_mutex_t* mutex) {
-	
-	int err=0;
-	int i=0;
-	while( (err=pthread_mutex_unlock(mutex))!=0 && i<10){
+
+	int err = 0;
+	int i = 0;
+	while ( (err = pthread_mutex_unlock(mutex)) != 0 && i < 10) {
 		i++;
 	}
-	
-	if(i==10){
+
+	if (i == 10) {
 		abort();
-		//printf("error in mutex unlock:%d",err); 
+		//printf("error in mutex unlock:%d",err);
 		//ec_meno1(kill(0, SIGUSR2),"kill");
 	}
 }
@@ -58,9 +58,9 @@ void Pthread_mutex_unlock(pthread_mutex_t* mutex) {
  *
  */
 void Pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
-	if(pthread_cond_wait(cond,mutex)!=0)
+	if (pthread_cond_wait(cond, mutex) != 0)
 		abort();
-	
+
 }
 /**
  * @function Pthread_cond_signal
@@ -70,7 +70,7 @@ void Pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
  *
  */
 void Pthread_cond_signal(pthread_cond_t* cond) {
-	if(pthread_cond_signal(cond)!=0){
+	if (pthread_cond_signal(cond) != 0) {
 		abort();
 	}
 }

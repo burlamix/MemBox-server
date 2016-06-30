@@ -20,7 +20,7 @@ echo
 	else
 			eval set -- "$PARSED_OPTIONS"
 
-		#inizzializzo a zero le variabili che mi serviranno per le varie opsioni
+		#inizzializzo a zero le variabili che mi serviranno per le varie opsioneioni
 		pp=0;uu=0;gg=0;rr=0;ccc=0;ss=0;oo=0;mm=0;hh=0													
 		perr=0;
 
@@ -29,7 +29,7 @@ echo
 			do
 			  case $1 in 
 			        -p)
-			             echo  opzione p
+			             #echo  opzione p
 						pp=1
 			                  shift;;
 			        -u)
@@ -140,41 +140,41 @@ echo
 						s=${s#*-}
 						i=1
 						for n in $s ; do 																					
-							if [ $i -eq 1 ]; then   np=$n ;fi
+							if [ $i -eq 1 ]; then   npt=$n ;fi
 							if [ $i -eq 2 ] ; then  npf=$n ;fi
-							if [ $i -eq 3 ] ; then  nu=$n ;fi
+							if [ $i -eq 3 ] ; then  nut=$n ;fi
 							if [ $i -eq 4 ] ; then  nuf=$n ;fi
-							if [ $i -eq 5 ] ; then  ng=$n ;fi
+							if [ $i -eq 5 ] ; then  ngt=$n ;fi
 							if [ $i -eq 6 ] ; then  ngf=$n ;fi
-							if [ $i -eq 7 ] ; then  nr=$n ;fi
+							if [ $i -eq 7 ] ; then  nrt=$n ;fi
 							if [ $i -eq 8 ] ; then  nrf=$n ;fi
-							if [ $i -eq 9 ] ; then  nk=$n ;fi
+							if [ $i -eq 9 ] ; then  nkt=$n ;fi
 							if [ $i -eq 10 ] ; then  nkf=$n;fi
 							let i=i+1
 						done
 
 						
-						npt=$(($np+$npf))
+						np=$(($npt-$npf))
 						np=$(($np * 100))
 						np=$(($np/$npt))
 					printf "percentuale di put andate a buon fine = %s \n" "$np"
 
-						nut=$(($nu+$nuf))
+						nu=$(($nut-$nuf))
 						nu=$(($nu * 100))
 						nu=$(($nu/$nut))
 					printf "percentuale di update andate a buon fine = %s \n" "$nu"
 
-						ngt=$(($ng+$ngf))
+						ng=$(($ngt-$ngf))
 						ng=$(($ng * 100))
 						ng=$(($ng/$ngt))
 					printf "percentuale di get andate a buon fine = %s \n" "$ng"
 
-						nrt=$(($nr+$nrf))
+						nr=$(($nrt-$nrf))
 						nr=$(($nr * 100))
 						nr=$(($nr/$nrt))
 					printf "percentuale di remove andate a buon fine = %s \n" "$nr"
 
-						nkt=$(($nk+$nkf))
+						nk=$(($nkt-$nkf))
 						nk=$(($nk * 100))
 						nk=$(($nk/$nkt))
 

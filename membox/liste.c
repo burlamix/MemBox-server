@@ -10,12 +10,12 @@
  *
  * @return il puntatore alla struttura creata in caso di successo, ritorna NULL e setta errno in caso di errore
  */
-coda_fd* initcoda(){
+coda_fd* initcoda() {
 	coda_fd* c;
-	ec_null_c( c=malloc(sizeof(coda_fd)),"create coda", return NULL);
-	c->lenght=0;
-	c->testa_attesa=NULL;
-	c->coda=NULL;
+	ec_null_c( c = malloc(sizeof(coda_fd)), "create coda", return NULL);
+	c->lenght = 0;
+	c->testa_attesa = NULL;
+	c->coda = NULL;
 	return c;
 }
 
@@ -29,19 +29,19 @@ coda_fd* initcoda(){
  *
  * @return il puntatore al nuovo nodo in caso di successo, ritorna NULL e setta ernno in caso di errore
  */
- nodo* insert_incoda(nodo*n,int c){
+nodo* insert_incoda(nodo*n, int c) {
 	nodo* new;
-	ec_null_c(new= malloc(sizeof(nodo)), "create nodo", return NULL );
-	new->info=c;
-	if(n==NULL){//coda vuota
-		new->prec=NULL;
-		new->next=NULL;
-	}else{
-		new->prec=n;
-		new->next=n->next;
-		n->next=new;
-		if(new->next!=NULL) new->next->prec=new;
-		
+	ec_null_c(new = malloc(sizeof(nodo)), "create nodo", return NULL );
+	new->info = c;
+	if (n == NULL) { //coda vuota
+		new->prec = NULL;
+		new->next = NULL;
+	} else {
+		new->prec = n;
+		new->next = n->next;
+		n->next = new;
+		if (new->next != NULL) new->next->prec = new;
+
 	}
 	return new;
 
@@ -54,21 +54,21 @@ coda_fd* initcoda(){
  *
  * @return 0 in caso di successo, -1 caso di errore
  */
-  int delete (nodo* n){
-	if(n!=NULL){
+int delete (nodo* n) {
+	if (n != NULL) {
 		nodo* aus;
-		if(n->prec==NULL && n->next==NULL){//solo un elemento
+		if (n->prec == NULL && n->next == NULL) { //solo un elemento
 			free(n);
 			return 0;
 		}
-		if(n->prec!=NULL && n->next!=NULL){//sia il precedente che il successivo
-			aus=n->next;
-			aus->prec=n->prec;
-			n->prec->next=aus;
-		}else{
-			if(n->prec==NULL)			//solo il successivo
-				n->next->prec=NULL;
-			else n->prec->next=NULL;	//solo il precedente
+		if (n->prec != NULL && n->next != NULL) { //sia il precedente che il successivo
+			aus = n->next;
+			aus->prec = n->prec;
+			n->prec->next = aus;
+		} else {
+			if (n->prec == NULL)			//solo il successivo
+				n->next->prec = NULL;
+			else n->prec->next = NULL;	//solo il precedente
 		}
 		free(n);
 		return 0;
@@ -83,8 +83,8 @@ coda_fd* initcoda(){
  * @param c  puntatore ad un nodo qualsiasi della lista;
  *
  */
-void delete_coda(nodo* n){
-	if(n!=NULL){
+void delete_coda(nodo* n) {
+	if (n != NULL) {
 		delete_coda(n->next);
 		delete_coda(n->prec);
 		//viene chiuso il fd della comunicazione
@@ -101,9 +101,9 @@ void delete_coda(nodo* n){
  * @param c  puntatore alla struttura coda_fd che deve essere eliminata
  *
  */
-void delete_allfd(coda_fd* c){
-		delete_coda(c->testa_attesa);
-		free(c);
+void delete_allfd(coda_fd* c) {
+	delete_coda(c->testa_attesa);
+	free(c);
 }
 
 /**
@@ -115,17 +115,17 @@ void delete_allfd(coda_fd* c){
  *
  * @return 0 in caso di successo, -1 caso di errore
  */
- int delete_fd(coda_fd* c,nodo * n){
-	if( n== c->testa_attesa){//devo aggiornare da dove prendo le connessioni
-		c->testa_attesa=n->next;
+int delete_fd(coda_fd* c, nodo * n) {
+	if ( n == c->testa_attesa) { //devo aggiornare da dove prendo le connessioni
+		c->testa_attesa = n->next;
 	}
-	if(n->next== NULL && c->coda==n){//devo aggiornare dove inserisco le connessioni
-		c->coda=n->prec;
+	if (n->next == NULL && c->coda == n) { //devo aggiornare dove inserisco le connessioni
+		c->coda = n->prec;
 	}
 	//viene chiuso il filedescriptor della connessione
 	ec_meno1_np(close(n->info), return -1);
 	ec_meno1_np(delete(n), return -1);
-	
+
 	c->lenght--;
 	return 0;
 }
@@ -139,12 +139,12 @@ void delete_allfd(coda_fd* c){
  *
  * @return 0 in caso di successo, -1 caso di errore
  */
-int add_fd( coda_fd* c, int fd){
+int add_fd( coda_fd* c, int fd) {
 
-	ec_null_np(c->coda = insert_incoda(c->coda,fd), return -1);
+	ec_null_np(c->coda = insert_incoda(c->coda, fd), return -1);
 	c->lenght++;
-	if(c->testa_attesa==NULL){
-			c->testa_attesa= c->coda;
+	if (c->testa_attesa == NULL) {
+		c->testa_attesa = c->coda;
 	}
 	return 0;
 }

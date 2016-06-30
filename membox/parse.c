@@ -61,8 +61,8 @@ int parse(char* path, var_conf* str_agg)
 {
 	size_t len = 0;
 	char *linea = NULL;
-	char *var1 = NULL;
-	char *var2 = NULL;
+	char *nome_variabile = NULL;
+	char *valore_variabile = NULL;
 
 	int  j;
 
@@ -82,17 +82,17 @@ int parse(char* path, var_conf* str_agg)
 		//quando siamo su una riga valida che non è un commento, levo = e i tab e prelevo le due variabili, se non ce ne sono due, ritorno errore
 		if (linea[j] != '\n' && linea[j] != '#' && linea[j] != '\0') {
 
-			var1 = strtok (linea, " = \t ");
+			nome_variabile = strtok (linea, " = \t ");
 
-			if (var1 == NULL) return -1;
+			if (nome_variabile == NULL) return -1;
 
-			var1 = remove_n(var1);
-			var2 = strtok (NULL, " = \t ");
+			nome_variabile = remove_n(nome_variabile);
+			valore_variabile = strtok (NULL, " = \t ");
 
-			if (var2 == NULL) return -1;
-			var2 = remove_n(var2);
+			if (valore_variabile == NULL) return -1;
+			valore_variabile = remove_n(valore_variabile);
 
-			if (assegna_var(var1, var2, str_agg) == -1) {
+			if (assegna_var(nome_variabile, valore_variabile, str_agg) == -1) {
 				return -1;
 			}
 		}

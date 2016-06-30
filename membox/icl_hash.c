@@ -1,10 +1,10 @@
 /**
  * @file icl_hash.c
  *
- * Implementazione di una tabella hash per la realizzazione di un repository 
+ * Implementazione di una tabella hash per la realizzazione di un repository
  * di message_data_t come definito nel @file message.h
  *
- * Il codice per l'implementaione è stato ottenuto con delle modifiche al codice 
+ * Il codice per l'implementaione è stato ottenuto con delle modifiche al codice
  ] di Jakub kurzak che si riferiva a delle tabelle hash generiche.
  * @author Jakub Kurzak, Simone Spagnoli, Eleonora Di Gregorio
  */
@@ -50,7 +50,7 @@ hash_pjw(void* key)
     char *datum = (char *)key;
     unsigned int hash_value, i;
 
-    if(!datum) return 0;
+    if (!datum) return 0;
 
     for (hash_value = 0; *datum; ++datum) {
         hash_value = (hash_value << ONE_EIGHTH) + *datum;
@@ -62,7 +62,7 @@ hash_pjw(void* key)
 
 
 void freedata(message_data_t* aus) {
-  free(aus->buf);
+    free(aus->buf);
 }
 
 
@@ -79,42 +79,42 @@ void freedata(message_data_t* aus) {
  */
 
 icl_hash_t *
-icl_hash_create( int nbuckets, int ss, int sbs, int mos){
+icl_hash_create( int nbuckets, int ss, int sbs, int mos) {
     icl_hash_t *ht;
-    int i,aus;
+    int i, aus;
 
-    ht= (icl_hash_t*)malloc(sizeof(icl_hash_t));
-    if(!ht) return NULL;
+    ht = (icl_hash_t*)malloc(sizeof(icl_hash_t));
+    if (!ht) return NULL;
     //inizializzo le informazioni della tabella hash
     ht->nbuckets = nbuckets;
-    ht->StorageSize=ss;
-    ht->StorageByteSize=sbs;
-    ht->MaxObjSize=mos;
+    ht->StorageSize = ss;
+    ht->StorageByteSize = sbs;
+    ht->MaxObjSize = mos;
 
-    if((aus=pthread_mutex_init(&ht->lk_repo, NULL))!=0) { free(ht); return NULL;}
-    ht->repo_l=0;
-    ht->fd=-1;
-    
-    if((aus=pthread_mutex_init(&ht->lk_job_c, NULL))!=0) {free(ht); return NULL; }
-    ht->job_c=0;
-    if((aus=pthread_cond_init(&ht->cond_job,NULL))!=0) { free(ht); return NULL; }
-    
+    if ((aus = pthread_mutex_init(&ht->lk_repo, NULL)) != 0) { free(ht); return NULL;}
+    ht->repo_l = 0;
+    ht->fd = -1;
+
+    if ((aus = pthread_mutex_init(&ht->lk_job_c, NULL)) != 0) {free(ht); return NULL; }
+    ht->job_c = 0;
+    if ((aus = pthread_cond_init(&ht->cond_job, NULL)) != 0) { free(ht); return NULL; }
+
     //alloco la lista delle liste di trabocco
     ht->buckets = (icl_entry_t**)malloc(nbuckets * sizeof(icl_entry_t*));
-    if(!ht->buckets) {free(ht); return NULL;}
+    if (!ht->buckets) {free(ht); return NULL;}
     //alloco la lista delle variabili di mutua esclusione e di condizione
     ht->lkline = (icl_entry_lk*)malloc(nbuckets * sizeof(icl_entry_lk));
-    if(!ht->lkline) {free(ht); free(ht->buckets); return NULL; }
+    if (!ht->lkline) {free(ht); free(ht->buckets); return NULL; }
 
     //inizializzo variabili di condizione e mutua esclusione
-    for(i=0;i<ht->nbuckets;i++){
+    for (i = 0; i < ht->nbuckets; i++) {
         ht->buckets[i] = NULL;
-        if((aus=pthread_cond_init(&(ht->lkline[i].cond_line),NULL))!=0) {free(ht); free(ht->buckets); free(ht->lkline);return NULL;}
-        if((aus=pthread_mutex_init(&(ht->lkline[i].mutex_line),NULL))!=0) {free(ht); free(ht->buckets); free(ht->lkline);return NULL;}
-        ht->lkline[i].c=-1;
+        if ((aus = pthread_cond_init(&(ht->lkline[i].cond_line), NULL)) != 0) {free(ht); free(ht->buckets); free(ht->lkline); return NULL;}
+        if ((aus = pthread_mutex_init(&(ht->lkline[i].mutex_line), NULL)) != 0) {free(ht); free(ht->buckets); free(ht->lkline); return NULL;}
+        ht->lkline[i].c = -1;
     }
     return ht;
-        
+
 }
 
 
@@ -131,32 +131,32 @@ icl_hash_create( int nbuckets, int ss, int sbs, int mos){
  */
 
 message_data_t *
-icl_hash_find(icl_hash_t *ht, unsigned long key){
+icl_hash_find(icl_hash_t *ht, unsigned long key) {
     icl_entry_t* curr;
     message_data_t* aus;
     unsigned int hash_val;
 
-    if(!ht ) return NULL;
+    if (!ht ) return NULL;
     //calcolo il valore della chiave
-    hash_val= hash_pjw((void*)&key)% ht->nbuckets;
+    hash_val = hash_pjw((void*)&key) % ht->nbuckets;
     //acquisisco la mutua esclusione sulla lista di trabocco
     Pthread_mutex_lock(&ht->lkline[hash_val].mutex_line);
-    while(ht->lkline[hash_val].c!=-1){
-            Pthread_cond_wait(&ht->lkline[hash_val].cond_line,&ht->lkline[hash_val].mutex_line);
+    while (ht->lkline[hash_val].c != -1) {
+        Pthread_cond_wait(&ht->lkline[hash_val].cond_line, &ht->lkline[hash_val].mutex_line);
     }
-    ht->lkline[hash_val].c=1;
+    ht->lkline[hash_val].c = 1;
     Pthread_mutex_unlock(&ht->lkline[hash_val].mutex_line);
     //scorro lista di trabocco
-    aus=NULL;
-    for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next){
-        if ( curr->key==key){
-            aus=curr->data;
+    aus = NULL;
+    for (curr = ht->buckets[hash_val]; curr != NULL; curr = curr->next) {
+        if ( curr->key == key) {
+            aus = curr->data;
             break;
         }
     }
     //permetto di fare operazione sulla riga a chi è in attesa
     Pthread_mutex_lock(&ht->lkline[hash_val].mutex_line);
-    ht->lkline[hash_val].c=-1;
+    ht->lkline[hash_val].c = -1;
     Pthread_cond_signal(&ht->lkline[hash_val].cond_line);
     Pthread_mutex_unlock(&ht->lkline[hash_val].mutex_line);
 
@@ -172,7 +172,7 @@ icl_hash_find(icl_hash_t *ht, unsigned long key){
  * @param key   la chiave del nuovo elemento
  * @param data  l'elemento da inserire nella tabella hash
  *
- * @returns 0 in caso di successo, -1 per il fallimento dell'allocazione, 
+ * @returns 0 in caso di successo, -1 per il fallimento dell'allocazione,
  *          -2 se l'elemento esite già, -3 se i parametri passati non sono corretti
  */
 
@@ -181,43 +181,43 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
 {
     icl_entry_t *curr;
     unsigned int hash_val;
-    int aus=0;
+    int aus = 0;
 
-    if(!ht) return -3;
+    if (!ht) return -3;
 
-   //calcolo la chiave
-    hash_val=hash_pjw((void*)&key)% ht->nbuckets;
+    //calcolo la chiave
+    hash_val = hash_pjw((void*)&key) % ht->nbuckets;
 
     printf("prima attesa insert\n");
-            fflush(stdout);
+    fflush(stdout);
     //acquisisco la mutua esclusione sulla lista di trabocco
     Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
-    
-    while(ht->lkline[hash_val].c!=-1){
-            Pthread_cond_wait(&(ht->lkline[hash_val].cond_line),&(ht->lkline[hash_val].mutex_line));
+
+    while (ht->lkline[hash_val].c != -1) {
+        Pthread_cond_wait(&(ht->lkline[hash_val].cond_line), &(ht->lkline[hash_val].mutex_line));
     }
-    ht->lkline[hash_val].c=1;
+    ht->lkline[hash_val].c = 1;
     Pthread_mutex_unlock(&(ht->lkline[hash_val].mutex_line));
 
-    for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next){
-        if ( curr->key==key)
-            aus=-2; /* key already exists */
+    for (curr = ht->buckets[hash_val]; curr != NULL; curr = curr->next) {
+        if ( curr->key == key)
+            aus = -2; /* key already exists */
     }
 
     /* if key was not found */
-    if(aus!=-2){
+    if (aus != -2) {
         curr = (icl_entry_t*)malloc(sizeof(icl_entry_t));
-        if(!curr) aus=-1;
-            if(aus!=-1){
-                curr->key = key;
-                curr->data = data;
-                curr->next = ht->buckets[hash_val]; /* add at start */
-                ht->buckets[hash_val] = curr;
-            }
+        if (!curr) aus = -1;
+        if (aus != -1) {
+            curr->key = key;
+            curr->data = data;
+            curr->next = ht->buckets[hash_val]; /* add at start */
+            ht->buckets[hash_val] = curr;
+        }
     }
     //permetto di fare operazione sulla riga a chi è in attesa
     Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
-    ht->lkline[hash_val].c=-1;
+    ht->lkline[hash_val].c = -1;
     Pthread_cond_signal(&(ht->lkline[hash_val].cond_line));
     Pthread_mutex_unlock(&(ht->lkline[hash_val].mutex_line));
 
@@ -236,42 +236,42 @@ icl_hash_insert(icl_hash_t *ht, unsigned long key, message_data_t* data)
  * @returns la dimensione dell'elemento in caso di successo, -1 in caso di fallimento.
  */
 
-int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
+int icl_hash_delete(icl_hash_t *ht, unsigned long key ) {
     icl_entry_t *curr, *prev;
     unsigned int hash_val;
     int aus;
-    if(!ht ) return -1;
+    if (!ht ) return -1;
 
-    hash_val=hash_pjw((void*)&key)% ht->nbuckets;
+    hash_val = hash_pjw((void*)&key) % ht->nbuckets;
 
     Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
-     while(ht->lkline[hash_val].c!=-1){
-            Pthread_cond_wait(&(ht->lkline[hash_val].cond_line),&(ht->lkline[hash_val].mutex_line));
+    while (ht->lkline[hash_val].c != -1) {
+        Pthread_cond_wait(&(ht->lkline[hash_val].cond_line), &(ht->lkline[hash_val].mutex_line));
     }
-    ht->lkline[hash_val].c=1;
+    ht->lkline[hash_val].c = 1;
     Pthread_mutex_unlock(&(ht->lkline[hash_val].mutex_line));
 
-    aus=-1;
-    prev= NULL;
-    for(curr=ht->buckets[hash_val]; curr !=NULL;curr=curr->next){
-        if(curr->key==key){
-            if(prev==NULL){
-                ht->buckets[hash_val] =curr->next;
-            }else{
-                prev->next=curr->next;
+    aus = -1;
+    prev = NULL;
+    for (curr = ht->buckets[hash_val]; curr != NULL; curr = curr->next) {
+        if (curr->key == key) {
+            if (prev == NULL) {
+                ht->buckets[hash_val] = curr->next;
+            } else {
+                prev->next = curr->next;
             }
-            aus=curr->data->len;
+            aus = curr->data->len;
             free(curr->data->buf);
             free(curr->data);
             free(curr);
             break;
 
         }
-        prev= curr;
+        prev = curr;
     }
 
     Pthread_mutex_lock(&(ht->lkline[hash_val].mutex_line));
-    ht->lkline[hash_val].c=-1;
+    ht->lkline[hash_val].c = -1;
     Pthread_cond_signal(&(ht->lkline[hash_val].cond_line));
     Pthread_mutex_unlock(&(ht->lkline[hash_val].mutex_line));
 
@@ -283,7 +283,7 @@ int icl_hash_delete(icl_hash_t *ht, unsigned long key ){
 
 
 /**
- * @function icl_hash_destroy 
+ * @function icl_hash_destroy
  * @brief elimina tutti gli elementi della tabella hash e la tabella stessa
  *
  * @param ht   la tabella che deve essere libarata
@@ -295,20 +295,20 @@ icl_hash_destroy(icl_hash_t *ht)
     icl_entry_t *bucket, *curr, *next;
     int i;
 
-    for (i=0; i<ht->nbuckets; i++) {
+    for (i = 0; i < ht->nbuckets; i++) {
         bucket = ht->buckets[i];
-        for (curr=bucket; curr!=NULL; ) {
-            next=curr->next;
+        for (curr = bucket; curr != NULL; ) {
+            next = curr->next;
             free(curr->data->buf);
             free(curr->data);
             free(curr);
-            curr=next;
+            curr = next;
         }
     }
 
-    if(ht->buckets) free(ht->buckets);
-    if(ht->lkline) free(ht->lkline);
-    if(ht) free(ht);
+    if (ht->buckets) free(ht->buckets);
+    if (ht->lkline) free(ht->lkline);
+    if (ht) free(ht);
 
 }
 
@@ -328,14 +328,14 @@ icl_hash_dump(FILE* stream, icl_hash_t* ht)
     icl_entry_t *bucket, *curr;
     int i;
 
-    if(!ht) return -1;
+    if (!ht) return -1;
 
-    for(i=0; i<ht->nbuckets; i++) {
+    for (i = 0; i < ht->nbuckets; i++) {
         bucket = ht->buckets[i];
-        for(curr=bucket; curr!=NULL;curr=curr->next ) {
-            if(curr->key>=0)
+        for (curr = bucket; curr != NULL; curr = curr->next ) {
+            if (curr->key >= 0)
                 fprintf(stream, "icl_hash_dump: %ld: %d %s\n", curr->key, curr->data->len, (char*)curr->data->buf);
-                fflush(stream);
+            fflush(stream);
         }
     }
 
