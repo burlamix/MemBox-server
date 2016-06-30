@@ -246,7 +246,11 @@ void* sig_handler(){
 		printf(" SEGNALE:%d",sig);fflush(stdout);
 		switch (sig) {
 			case SIGUSR1: {
-				if (file_stat!=NULL) printStats(file_stat);
+				if (file_stat!=NULL){
+					Pthread_mutex_lock(&lk_stat);
+					printStats(file_stat);
+					Pthread_mutex_unlock(&lk_stat);
+				}
 				break;
 			}
 			case SIGUSR2: {

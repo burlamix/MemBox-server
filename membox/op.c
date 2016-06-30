@@ -427,7 +427,6 @@ int gest_op(message_t * mex,long fd, icl_hash_t* repository, struct statistics  
         return -1;
       }
 
-       printStats(stdout);
         printf(" risultato dell op=%d\n",ris_op);
         //posso liberare il buffer che verrà riallocato nuovamente alla prossima readData
         if(mex->hdr.op == PUT_OP || mex->hdr.op == UPDATE_OP ){
