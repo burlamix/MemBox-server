@@ -66,9 +66,13 @@ var_conf v_configurazione;
 
 //variabili e_flag che servono per sincronizzare sig_handler con tutti gli altri thread
 //serve per far terminare tutto le richieste di un client a un worker e poi teminare
-volatile sig_atomic_t e_flag = 0;
+int e_flag = 0;
 //serve per far terminare immediatamente i woker una volta terminata l'operazione
-volatile sig_atomic_t i_flag = 0;
+int i_flag = 0;
+//variabili di mutua esclusione per e_flag e i_flag
+pthread_mutex_t lk_eflag = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lk_iflag = PTHREAD_MUTEX_INITIALIZER;
+
 
 //il fd della socket come variabile globale perchè è necessario bloccarla quando arriva segnale sigusr2
 int fd_skt;
@@ -100,10 +104,13 @@ void *dispatcher()
 	ec_meno1_ex(listen(fd_skt,SOMAXCONN),"impossibile accettare connessioni");
 
 	//finche non è stato mandato un sengnale di terminazione continuo ad accettare connessioni
+	Pthread_mutex_lock(&lk_eflag);
+	Pthread_mutex_lock(&lk_iflag);
 	while(e_flag==0 && i_flag==0){
-
+		Pthread_mutex_unlock(&lk_eflag);
+		Pthread_mutex_unlock(&lk_iflag);
 			aus=0;
-			ec_meno1_c(fd_c=accept(fd_skt,NULL,0), "connessione fallita", break);
+			ec_meno1_c(fd_c=accept(fd_skt,NULL,0), "connessione fallita", Pthread_mutex_lock(&lk_eflag);Pthread_mutex_lock(&lk_iflag);break);
 
 			Pthread_mutex_lock(&lk_conn);
 
@@ -129,8 +136,11 @@ void *dispatcher()
 				fail.hdr.op = OP_FAIL; 			
 				ec_meno1(sendRequest(fd_c, &fail),"impossibile inviare messaggio");  
 			}
-
+		Pthread_mutex_lock(&lk_eflag);
+		Pthread_mutex_lock(&lk_iflag);
 	}
+	Pthread_mutex_unlock(&lk_eflag);
+	Pthread_mutex_unlock(&lk_iflag);
 
 	ec_meno1_ex(close(fd_skt),"impossibile chiudere socket");
 	ec_meno1_ex(unlink(v_configurazione.UnixPath),"errore di unlink");
@@ -163,41 +173,77 @@ void* worker(){
 	//struttura che serve per riceverei i messaggi
 	message_t *dati =malloc(sizeof(message_t));
 
-
+	//Pthread_mutex_lock(&lk_eflag);
+	Pthread_mutex_lock(&lk_iflag);
 	while(i_flag==0){
+	Pthread_mutex_unlock(&lk_iflag);
+	//Pthread_mutex_unlock(&lk_eflag);
+	
 	Pthread_mutex_lock(&lk_conn);
 		//nel finche non è settato uno dei due flag o non c'è nessun lavoro da svolgere attende
+		Pthread_mutex_lock(&lk_eflag);
+		Pthread_mutex_lock(&lk_iflag);
 		while(e_flag==0 && i_flag==0 && coda_conn->testa_attesa==NULL){//verifica la presenza di nuovi lavori
 			printf("testa attesa è nulla -> il worker si sospende\n");	fflush(stdout);
+			Pthread_mutex_unlock(&lk_iflag);
+			Pthread_mutex_unlock(&lk_eflag);
 
 			Pthread_cond_wait(&cond_nuovolavoro,&lk_conn);
+
+			Pthread_mutex_lock(&lk_eflag);
+			Pthread_mutex_lock(&lk_iflag);
 		}
+		
 
 		// se viene svegliato ma uno dei due flag è settato, significa che deve terminare quindi interrompe il ciclo
-		if(e_flag!=0 && i_flag!=0) {Pthread_mutex_unlock(&lk_conn);break;}
-
+		if(e_flag!=0 || i_flag!=0) {
+			//Pthread_mutex_unlock(&lk_iflag);
+			Pthread_mutex_unlock(&lk_eflag);
+			Pthread_mutex_unlock(&lk_conn);break;
+		}
+		Pthread_mutex_unlock(&lk_iflag);
+		Pthread_mutex_unlock(&lk_eflag);
 		printf("\n\n\n\n__________________________________inizio______________________________________________________________________");	fflush(stdout);
 
 		printf("\nworker si sveglia e procede a prendere una nuova connessione,");	fflush(stdout);
 		// fare con una funzione
 		job=coda_conn->testa_attesa;
+		//scelta progettuale diversa: caso in cui si vogliano gestire tutte le connessioni pendenti e non solo quelle già 
+		//prese in carico dal worker, per testarlo commentare le righe da a e togliere il controllo su e_flag nel ciclo più esterno;
 		//se job==NULL vuol dire che sono uscito dal ciclo per volatile e le connessioni sono finite quindi esco dal while;
-		if((e_flag!=0 && job==NULL) || i_flag!=0){
-			Pthread_mutex_unlock(&lk_conn);
-			break;
-		}
+		//
+		//if((e_flag!=0 && job==NULL) || i_flag!=0){
+		//	Pthread_mutex_unlock(&lk_iflag);
+		//	Pthread_mutex_unlock(&lk_eflag);
+		//	Pthread_mutex_unlock(&lk_conn);
+		//	break;
+		//}
+		//Pthread_mutex_unlock(&lk_iflag);
+		//Pthread_mutex_unlock(&lk_eflag);
+		//
 		fd=coda_conn->testa_attesa->info;
 		coda_conn->testa_attesa=coda_conn->testa_attesa->next;
-		mboxStats.concurrent_connections++;
 		Pthread_mutex_unlock(&lk_conn);
+
+		Pthread_mutex_lock(&lk_stat);
+		mboxStats.concurrent_connections++;
+		Pthread_mutex_unlock(&lk_stat);
+
 		printf(" l'fd della nuova connessione è %d\n",fd);	fflush(stdout);
 		
 
 		//finche ricevo una richiesta e non è settato il flag continuo a eseguire le richieste del client
-		while( i_flag==0 && readHeader(fd, &dati->hdr))// e poi ci infiliamo una read
+		
+		while( readHeader(fd, &dati->hdr))// e poi ci infiliamo una read
 		{	
 				//viene eseguita l'operazione richiesta
 				ec_meno1_c(ris_op = gest_op(dati,fd, repository, &mboxStats, lk_stat), "operazione non identificata", free(dati->data.buf);break);
+				Pthread_mutex_lock(&lk_iflag);
+				if(i_flag!=0){
+					Pthread_mutex_unlock(&lk_iflag);
+					break;
+				}
+				Pthread_mutex_unlock(&lk_iflag);
 		}	
 		
 		Pthread_mutex_lock(&(repository->lk_repo));
@@ -209,8 +255,12 @@ void* worker(){
 		//terminate le richieste del client elimino il fd dall coda e aggiorno le statistiche
 		Pthread_mutex_lock(&lk_conn);
 		delete_fd(coda_conn, job);
-		mboxStats.concurrent_connections--;
 		Pthread_mutex_unlock(&lk_conn);
+
+		Pthread_mutex_lock(&lk_stat);
+		mboxStats.concurrent_connections--;
+		Pthread_mutex_unlock(&lk_stat);
+
 		
 		//printf("\n-----------------------------dump----------------------------------\n");
   	 	 //icl_hash_dump(stdout, repository);
@@ -218,7 +268,11 @@ void* worker(){
  
 		printf("\n_____________________________________________fine___________________________________________________________\n\n");	fflush(stdout);
 
+		//Pthread_mutex_lock(&lk_eflag);
+		Pthread_mutex_lock(&lk_iflag);
 	}
+	Pthread_mutex_unlock(&lk_iflag);
+	//Pthread_mutex_unlock(&lk_eflag);
 	free(dati);
 	printf("-----il worker muore-----\n");
 	fflush(stdout);
@@ -248,15 +302,18 @@ void* sig_handler(){
 			case SIGUSR1: {
 				Pthread_mutex_lock(&lk_stat);
 				if (file_stat!=NULL){
+					//Pthread_mutex_lock(&lk_stat);
 					printStats(file_stat);
+					//Pthread_mutex_unlock(&lk_stat);
 				}
 				Pthread_mutex_unlock(&lk_stat);
 				break;
 			}
 			case SIGUSR2: {
+				Pthread_mutex_lock(&lk_eflag);
 				e_flag=1;
-				shutdown(fd_skt,SHUT_RDWR); //andrea quarta ha detto che non va bene
-				printf("%d -------------------------------------\n\n\n",e_flag);
+				Pthread_mutex_unlock(&lk_eflag);
+				shutdown(fd_skt,SHUT_RDWR); 
 				fflush(stdout);
 				printf("-----handler si sveglia e elimina tutto----\n");
 				fflush(stdout);
